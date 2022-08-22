@@ -1,9 +1,11 @@
-from xmlrpc.server import SimpleXMLRPCServer
-from xmlrpc.client import DateTime as XMLRPCDateTime
 import sys
 from typing import List
+from xmlrpc.client import DateTime as XMLRPCDateTime
+from xmlrpc.server import SimpleXMLRPCServer
+
 from jobs import *
 from utils import fix_datetime
+
 
 class Queue:
     def __init__(self, jobs: List[Job] = []):
@@ -19,11 +21,11 @@ class Queue:
         return self.jobs[i]
 
     def get_dict(self):
-        return {j.id:j for j in self.jobs}
+        return {j.id: j for j in self.jobs}
 
     def get_pending_jobs(self):
         return self.get_jobs("pending")
-    
+
     def get_running_jobs(self):
         return self.get_jobs("running")
 
@@ -45,6 +47,7 @@ class Queue:
 
     def __str__(self):
         return "\n".join([f"{i}; " + job.__str__() for i, job in enumerate(self.jobs)])
+
 
 class CtlDaemon:
     def __init__(self):
@@ -85,7 +88,9 @@ class CtlDaemon:
         job = BashJob(cmd)
         job.owner = kwargs["owner"] if "owner" in kwargs else None
         print(type(kwargs["timestamp"]))
-        job.created_at = fix_datetime(kwargs["timestamp"]) if "timestamp" in kwargs else None
+        job.created_at = (
+            fix_datetime(kwargs["timestamp"]) if "timestamp" in kwargs else None
+        )
         self.submit_job(job)
         # if len(queue) > 1, and no active, worker -> register new worker
 
@@ -100,7 +105,7 @@ class CtlDaemon:
         # current system info string
         # number of running, pending, etc. number of workers, ...
         pass
-    
+
     def register_worker(self):
         # registers worker
         pass
@@ -108,7 +113,6 @@ class CtlDaemon:
     def kill_worker(self):
         # remove worker
         pass
-
 
 
 def main():
@@ -120,7 +124,7 @@ def main():
 
     server.register_introspection_functions()
     server.register_instance(CtlDaemon())
-    print(f'Listening on localhost port {port}')
+    print(f"Listening on localhost port {port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

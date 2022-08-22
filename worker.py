@@ -1,11 +1,13 @@
-import xmlrpc.client
-import time
-from jobs import *
-import os
 import datetime
+import os
+import time
+import xmlrpc.client
+
+from jobs import *
 from utils import timedelta2dict
 
 server = xmlrpc.client.ServerProxy("http://localhost:8000", allow_none=True)
+
 
 class Worker:
     def __init__(self):
@@ -15,15 +17,15 @@ class Worker:
         self._tidle = None
 
     def show_uptime(self):
-        dt = (datetime.datetime.now() - self._tup)
+        dt = datetime.datetime.now() - self._tup
         return f"{dt.days}:{dt.hours}:{dt.minutes}:{dt.seconds}"
-    
+
     @timedelta2dict
     def idletime(self):
         if self._tidle is None:
             return float("inf")
         else:
-            return (datetime.datetime.now() - self._tidle)
+            return datetime.datetime.now() - self._tidle
 
     def start(self):
         while True:
@@ -37,9 +39,20 @@ class Worker:
                     job.run()
                     os._exit(0)
                 else:
-                    job.pid = newpid; job.ppid = self.pid
-                    server.update_job_status(job.id, {"status": "running", "pid": newpid, "ppid": job.ppid, "start_time": datetime.datetime.now()})
-                    print(f"Submitted jobID:[{job.id}] PID:[{job.pid}] CMD:[{job.cmd}].")
+                    job.pid = newpid
+                    job.ppid = self.pid
+                    server.update_job_status(
+                        job.id,
+                        {
+                            "status": "running",
+                            "pid": newpid,
+                            "ppid": job.ppid,
+                            "start_time": datetime.datetime.now(),
+                        },
+                    )
+                    print(
+                        f"Submitted jobID:[{job.id}] PID:[{job.pid}] CMD:[{job.cmd}]."
+                    )
                 time.sleep(0.5)
 
                 # wait for child process to finish
@@ -50,14 +63,21 @@ class Worker:
                         time.sleep(0.5)
                     else:
                         raise ValueError("pid of job was not valid.")
-                    server.update_job_status(job.id, {"exit": 1, "status": "finished", "end_time": datetime.datetime.now()}) # reset ppid/pid ?
+                    server.update_job_status(
+                        job.id,
+                        {
+                            "exit": 1,
+                            "status": "finished",
+                            "end_time": datetime.datetime.now(),
+                        },
+                    )  # reset ppid/pid ?
 
                     # try:
                     #     server.update_job_status(job.id, {"exit": 1, "status": "finished"})
                     #     job.run()
                     # except:
                     #     server.update_job_status(job.id, {"exit": 0, "status": "failed"})
-                
+
                     self._tidle = datetime.datetime.now()
                     self.current_job = None
             else:
