@@ -10,13 +10,14 @@ import os
 class QueueClient(object):
 
     def __init__(self, server):
-        parser = argparse.ArgumentParser(description='Client to interact with the job queue', usage='''queue-client <command> [<args>]
-        scancel
-        sinfo
-        squeue
-        sbatch
+        parser = argparse.ArgumentParser(description='Client to interact with the job queue server.', usage='''queue-client <command> [<args>]
+        
+        sinfo: Show current system and queue status.
+        squeue: Show submitted jobs.
+        sbatch: Submit batch job.
+        scancel: Cancel batch job.
         ''')
-        parser.add_argument('command', nargs='?', help='Subcommand to run')
+        parser.add_argument('command', nargs='?', help='Subcommand to run. [sinfo, squeue, sbatch, scancel]')
         parser.add_argument('-v', '--version', action='store_true', help='output version information and exit.')
         # parse_args defaults to [1:] for args, but you need to
         # exclude the rest of the args too, or validation will fail
@@ -41,9 +42,9 @@ class QueueClient(object):
     
     def get_client_info(self):
         user = getpass.getuser()
-        datetime_ = datetime.datetime.now().strftime("%H:%M:%S, %d.%m.%Y")
+        timestamp = datetime.datetime.now()
         pid = os.getpid()
-        return user, datetime_, pid
+        return user, timestamp, pid
 
     def squeue(self):
         parser = argparse.ArgumentParser(
@@ -55,14 +56,27 @@ class QueueClient(object):
         # now that we're inside a subcommand, ignore the first TWO argvs
         args = parser.parse_args(sys.argv[2:])
         
+        print("; ".join(["idx", "type", "id", "ppid", "pid", "status", "owner", "submitted", "time"]))
         print(self.server.squeue())
+
+    def register_worker(self):
+        parser = argparse.ArgumentParser(
+            description='Register a worker with the Queue server.')
+        # now that we're inside a subcommand, ignore the first TWO argvs
+        args = parser.parse_args(sys.argv[2:])
+
+        server.register_worker()        
 
     def sinfo(self):
         parser = argparse.ArgumentParser(
-            description='Show cluster status')
+            description='Show current system and queue status.')
         args = parser.parse_args(sys.argv[2:])
         
+        # show number and stats for registered workers (uptime, status, client info)
+        # show length of queue
+        # show some of the client info
         print("user: %s, date-time: %s, pid: %s" % self.get_client_info())
+        print(server.info())
     
     def sbatch(self):
         parser = argparse.ArgumentParser(
@@ -70,7 +84,10 @@ class QueueClient(object):
         parser.add_argument("input")
         args = parser.parse_args(sys.argv[2:])
         
-        server.submit(args.input)
+        
+        kwargs = {k:v for k,v in zip(["owner", "timestamp", "pid"], self.get_client_info())}
+        
+        server.sbatch(args.input, kwargs)
 
     def scancel(self):
         parser = argparse.ArgumentParser(
