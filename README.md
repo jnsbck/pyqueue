@@ -21,3 +21,4 @@ Slurm like Job queue.
 
 ### Worker
 - [X] Add Worker
+- [ ] Add Worker I/O (output/error logs)

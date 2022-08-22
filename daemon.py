@@ -87,7 +87,6 @@ class CtlDaemon:
     def sbatch(self, cmd, kwargs):
         job = BashJob(cmd)
         job.owner = kwargs["owner"] if "owner" in kwargs else None
-        print(type(kwargs["timestamp"]))
         job.created_at = (
             fix_datetime(kwargs["timestamp"]) if "timestamp" in kwargs else None
         )
