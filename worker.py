@@ -6,15 +6,20 @@ import xmlrpc.client
 from jobs import *
 from utils import timedelta2dict
 
-server = xmlrpc.client.ServerProxy("http://localhost:8000", allow_none=True)
 
 
 class Worker:
-    def __init__(self):
+    def __init__(self, queue_server = None):
         self.current_job = None
         self.pid = os.getpid()
         self._tup = datetime.datetime.now()
         self._tidle = None
+        self.queue_server = queue_server
+        self.status = "idle"
+
+    def register_with_queue_server(self, server):
+        self.queue_server = server
+        self.queue_server.register_worker(self.pid, {"t_up": self._tup, "status": self.status, "current_job": self.current_job})
 
     def show_uptime(self):
         dt = datetime.datetime.now() - self._tup
@@ -27,12 +32,18 @@ class Worker:
         else:
             return datetime.datetime.now() - self._tidle
 
+    def update_worker_status(self, pid, status="idle"):
+        self.current_job = pid
+        self.queue_server.update_worker_status(self.pid, {"status": status, "current_job": self.current_job})
+        if status == "idle":
+            self._tidle = datetime.datetime.now()
+
     def start(self):
         while True:
-            if server.get_num_pending_jobs() > 0:
-                instructions = server.acquire_job()
+            if self.queue_server.get_num_pending_jobs() > 0:
+                instructions = self.queue_server.acquire_job()
                 job = job_from_dict(*instructions)
-                self.current_job = job.id
+                self.update_worker_status(job.id, "busy")
 
                 newpid = os.fork()
                 if newpid == 0:
@@ -41,7 +52,7 @@ class Worker:
                 else:
                     job.pid = newpid
                     job.ppid = self.pid
-                    server.update_job_status(
+                    self.queue_server.update_job_status(
                         job.id,
                         {
                             "status": "running",
@@ -56,14 +67,14 @@ class Worker:
                 time.sleep(0.5)
 
                 # wait for child process to finish
-                while server.check_alive(job.id):
-                    pid = server.get_pid(job.id)
+                while self.queue_server.check_alive(job.id):
+                    pid = self.queue_server.get_job_pid(job.id)
                     if pid != None:
                         os.waitpid(pid, 0)
                         time.sleep(0.5)
                     else:
                         raise ValueError("pid of job was not valid.")
-                    server.update_job_status(
+                    self.queue_server.update_job_status(
                         job.id,
                         {
                             "exit": 1,
@@ -73,13 +84,13 @@ class Worker:
                     )  # reset ppid/pid ?
 
                     # try:
-                    #     server.update_job_status(job.id, {"exit": 1, "status": "finished"})
+                    #     self.queue_server.update_job_status(job.id, {"exit": 1, "status": "finished"})
                     #     job.run()
                     # except:
-                    #     server.update_job_status(job.id, {"exit": 0, "status": "failed"})
+                    #     self.queue_server.update_job_status(job.id, {"exit": 0, "status": "failed"})
 
-                    self._tidle = datetime.datetime.now()
-                    self.current_job = None
+                self.current_job = None
+                self.update_worker_status(None, "idle")
             else:
                 print("waiting...")
                 time.sleep(5)
@@ -90,6 +101,11 @@ class Worker:
                 break
         print("No more jobs queued. Worker was shut down.")
 
+    def kill(self):
+        pass
 
+
+queue_server = xmlrpc.client.self.queue_serverProxy("http://localhost:8000", allow_none=True)
 worker = Worker()
+worker.register_with_queue_server(queue_server)
 worker.start()

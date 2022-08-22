@@ -36,6 +36,10 @@ class Queue:
         job.status = "submitted"
         return job
 
+    def remove(self, id):
+        job_idx = [job.id for job in self.jobs].index(id)
+        return self.jobs.pop(job_idx)
+
     def append(self, job):
         self.jobs.append(job)
 
@@ -52,7 +56,7 @@ class Queue:
 class CtlDaemon:
     def __init__(self):
         self.queue = Queue()
-        self.workers = []
+        self.workers = {}
 
     def get_num_pending_jobs(self):
         return len(self.queue)
@@ -73,6 +77,13 @@ class CtlDaemon:
             else:
                 job.__dict__[key] = val
 
+    def update_worker_status(self, pid, kwargs):
+        for key, val in kwargs.items():
+            if isinstance(val, XMLRPCDateTime):
+                self.workers[pid][key] = fix_datetime(val)
+            else:
+                self.workers[pid][key] = val
+
     def submit_job(self, job):
         self.queue.append(job)
 
@@ -80,7 +91,7 @@ class CtlDaemon:
         job = self.queue.get_dict()[id]
         return job.check_alive()
 
-    def get_pid(self, id):
+    def get_job_pid(self, id):
         return self.queue.get_dict()[id].pid
 
     # ------------------ CLIENT FUNCTIONALITY -------------------
@@ -96,22 +107,31 @@ class CtlDaemon:
     def squeue(self):
         return self.queue.__str__()
 
-    def scancel(self, job):
-        self.squeue.remove(job)
-        # self.worker.kill(job)
+    def scancel(self, id):
+        if self.queue.get_dict()[id] == "running":
+            for ppid, status in self.workers.items():
+                job_id = status["current_work"]
+                pid = self.get_job_pid(job_id)
+
+                p = psutil.Process(pid)
+                p.terminate()  #or p.kill()
+        self.queue.remove(id)
+
 
     def sinfo(self):
         # current system info string
         # number of running, pending, etc. number of workers, ...
         pass
 
-    def register_worker(self):
-        # registers worker
-        pass
+    def register_worker(self, pid, kwargs):
+        self.workers.update({pid: kwargs})
 
-    def kill_worker(self):
-        # remove worker
-        pass
+    def kill_worker(self, pid):
+        # # remove worker from self.workers
+        data = self.workers.pop(pid)
+        # send interupt signal to pid of worker process
+        p = psutil.Process(pid)
+        p.terminate()  #or p.kill()
 
 
 def main():

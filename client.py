@@ -101,6 +101,7 @@ class QueueClient(object):
         # show number and stats for registered workers (uptime, status, client info)
         # show length of queue
         # show some of the client info
+        # ready to accept jobs
         print("user: %s, date-time: %s, pid: %s" % self.get_client_info())
         print(server.info())
 
