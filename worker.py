@@ -1,6 +1,6 @@
 import xmlrpc.client
 import time
-from Jobs import *
+from jobs import *
 import os
 import datetime
 from utils import timedelta2dict
@@ -38,7 +38,7 @@ class Worker:
                     os._exit(0)
                 else:
                     job.pid = newpid; job.ppid = self.pid
-                    server.update_job_status(job.id, {"status": "running", "pid": newpid, "ppid": job.ppid, "_start_time": datetime.datetime.now()})
+                    server.update_job_status(job.id, {"status": "running", "pid": newpid, "ppid": job.ppid, "start_time": datetime.datetime.now()})
                     print(f"Submitted jobID:[{job.id}] PID:[{job.pid}] CMD:[{job.cmd}].")
                 time.sleep(0.5)
 
@@ -50,7 +50,7 @@ class Worker:
                         time.sleep(0.5)
                     else:
                         raise ValueError("pid of job was not valid.")
-                    server.update_job_status(job.id, {"exit": 1, "status": "finished", "_end_time": datetime.datetime.now()}) # reset ppid/pid ?
+                    server.update_job_status(job.id, {"exit": 1, "status": "finished", "end_time": datetime.datetime.now()}) # reset ppid/pid ?
 
                     # try:
                     #     server.update_job_status(job.id, {"exit": 1, "status": "finished"})

@@ -2,23 +2,8 @@ from xmlrpc.server import SimpleXMLRPCServer
 from xmlrpc.client import DateTime as XMLRPCDateTime
 import sys
 from typing import List
-from Jobs import *
+from jobs import *
 from utils import fix_datetime
-
-"""To dos:
-- [X] Only allow one server to run at a time!
-- [ ] Add users
-- [ ] Add priorities
-- [X] Add Worker
-- [ ] Add logging
-- [ ] Add error handling and exceptions for jobs (Keyboard Interrupt of server / worker)
-- [ ] Keep jobs in file so when Server is killed, they can potentially be resumed
-- [ ] Add tests
-- [ ] make sbatch work
-- [ ] make sinfo nice
-- [ ] make squeue nice
-- [ ] make scancel work
-"""
 
 class Queue:
     def __init__(self, jobs: List[Job] = []):
@@ -44,6 +29,7 @@ class Queue:
 
     def next_job(self):
         pending_jobs = self.get_pending_jobs()
+        pending_jobs = sorted(pending_jobs, key=lambda x: x.priority, reverse=True)
         job = pending_jobs.pop(0)
         job.status = "submitted"
         return job
@@ -123,21 +109,28 @@ class CtlDaemon:
         # remove worker
         pass
 
-try:
-    port = 8000
-    server = SimpleXMLRPCServer(("localhost", port), allow_none=True)
-except OSError:
-    raise OSError(f"Another server is already listening on port {port}")
 
-server.register_introspection_functions()
-server.register_instance(CtlDaemon())
-print(f'Listening on localhost port {port}')
-try:
-    server.serve_forever()
-except KeyboardInterrupt:
-    print("\nKeyboard interrupt received, exiting.")
-    server.server_close()
-    sys.exit(0)
+
+def main():
+    try:
+        port = 8000
+        server = SimpleXMLRPCServer(("localhost", port), allow_none=True)
+    except OSError:
+        raise OSError(f"Another server is already listening on port {port}")
+
+    server.register_introspection_functions()
+    server.register_instance(CtlDaemon())
+    print(f'Listening on localhost port {port}')
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nKeyboard interrupt received, exiting.")
+        server.server_close()
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
 
 
 # ssh cin-hn

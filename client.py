@@ -56,7 +56,7 @@ class QueueClient(object):
         # now that we're inside a subcommand, ignore the first TWO argvs
         args = parser.parse_args(sys.argv[2:])
         
-        print("; ".join(["idx", "type", "id", "ppid", "pid", "status", "owner", "submitted", "time"]))
+        print("; ".join(["idx", "type", "id", "ppid", "pid", "status", "owner", "priority", "submitted", "time"]))
         print(self.server.squeue())
 
     def register_worker(self):
@@ -82,6 +82,7 @@ class QueueClient(object):
         parser = argparse.ArgumentParser(
             description='submit job')
         parser.add_argument("input")
+        parser.add_argument('-p', '--priority')
         args = parser.parse_args(sys.argv[2:])
         
         

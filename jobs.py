@@ -5,17 +5,18 @@ import psutil
 from utils import timedelta2dict, datetime2str
 
 class Job(ABC):
-    def __init__(self):
+    def __init__(self, priority: int = 0):
         super().__init__()
         self.id = hex(id(self))
         self.exit = None
         self.status = None # pending, running, finished, (stopped, paused), submitted
         self.owner = None
+        self.priority = priority
         self.created_at = None
         self.pid = None
         self.ppid = None
-        self._start_time = None
-        self._end_time = None
+        self.start_time = None
+        self.end_time = None
 
     @abstractmethod
     def run(self):
@@ -35,7 +36,7 @@ class Job(ABC):
     #     return self.exit == 0 and not self.is_alive
 
     def __str__(self):
-        items = [self.__class__.__name__, self.id, self.ppid, self.pid, self.status, self.owner, datetime2str(self.created_at)]
+        items = [self.__class__.__name__, self.id, self.ppid, self.pid, self.status, self.owner, self.priority, datetime2str(self.created_at)]
         items = [str(x) if x is not None else " - " for x in items]
         t_run = list(self.get_runtime().values())
         items += [f"{t_run[0]}-{t_run[1]:02d}:{t_run[2]:02d}:{t_run[3]:02d}"]
@@ -43,8 +44,8 @@ class Job(ABC):
 
     @timedelta2dict
     def get_runtime(self):
-        t0 = self._start_time
-        tfin = self._end_time
+        t0 = self.start_time
+        tfin = self.end_time
         if t0 is None:
             return datetime.timedelta(0)
         elif tfin is None:
@@ -56,8 +57,8 @@ class Job(ABC):
             return tfin - t0
 
 class BashJob(Job):
-    def __init__(self, cmd):
-        super().__init__()
+    def __init__(self, cmd, priority: int = 0):
+        super().__init__(priority)
         self.cmd = cmd
         self.status = "pending"
 
