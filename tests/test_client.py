@@ -1,0 +1,1 @@
+# test all client commands and flags
