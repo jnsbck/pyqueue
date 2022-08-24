@@ -14,7 +14,7 @@ def timedelta2dict(f, *args, **kwargs):
             d = {"days": out.days}
             d["hours"], rem = divmod(out.seconds, 3600)
             d["minutes"], d["seconds"] = divmod(rem, 60)
-            return d
+        return d
 
     return wrapped_f
 
