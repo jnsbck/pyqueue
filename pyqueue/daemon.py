@@ -3,8 +3,8 @@ from typing import List
 from xmlrpc.client import DateTime as XMLRPCDateTime
 from xmlrpc.server import SimpleXMLRPCServer
 
-from jobs import *
-from utils import fix_datetime
+from pyqueue.jobs import *
+from pyqueue.utils import fix_datetime
 
 
 class Queue:
@@ -28,6 +28,12 @@ class Queue:
 
     def get_running_jobs(self):
         return self.get_jobs("running")
+
+    def dump(self, path):
+        pass
+
+    def load(self, path):
+        pass
 
     def next_job(self):
         pending_jobs = self.get_pending_jobs()
@@ -98,9 +104,6 @@ class CtlDaemon:
     def sbatch(self, cmd, kwargs):
         job = BashJob(cmd)
         job.owner = kwargs["owner"] if "owner" in kwargs else None
-        job.created_at = (
-            fix_datetime(kwargs["timestamp"]) if "timestamp" in kwargs else None
-        )
         self.submit_job(job)
         # if len(queue) > 1, and no active, worker -> register new worker
 
@@ -155,19 +158,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-# ssh cin-hn
-# python3 daemon.py &
-# exit
-
-# ssh gber3
-# python3 client.py register_worker
-# python3 client.py sbatch job1.sh
-# python3 client.py sbatch job2.sh
-# python3 client.py sbatch job3.sh
-# exit
-
-# ssh ber1
-# python3 client.py register_worker
-# python3 client.py sbatch job1.sh
-# exit

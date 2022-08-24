@@ -1,63 +1,73 @@
 import datetime
 import subprocess
 from abc import ABC, abstractmethod
+import re
+import os
+from uuid import uuid4
 
 import psutil
 
-from utils import datetime2str, timedelta2dict
+from pyqueue.utils import datetime2str, timedelta2dict
 
 
 class Job(ABC):
-    def __init__(self, priority: int = 0):
+    def __init__(self, id = None, priority: int = 0):
         super().__init__()
-        self.id = hex(id(self))
-        self.exit = None
+        self.id = id if id is not None else str(uuid4())[:13] # numbering the jobs would be preferable
         self.status = None  # pending, running, finished, (stopped, paused), submitted
-        self.owner = None
-        self.priority = priority
-        self.created_at = None
-        self.pid = None
-        self.ppid = None
-        self.start_time = None
-        self.end_time = None
+        self.owner = None # the user that has created the job
+        self.name = None # a name that can be given to the job
+        self.priority = priority # higher priority jobs are submitted first
+        self.created_at = datetime.datetime.now() # instantiation time of job
+        self._start_time = None # time when the job was started
+        self._end_time = None # time when the job finished
+        self._exit = None # exit status of the job (0/1)
+        self._out = None # path to output file
+        self._err = None # path to err file
 
     @abstractmethod
     def run(self):
+        """Execute a cmd/script/function and return its output.
+        
+        Returns:
+            returncode, stdout, stderr
+        """
         pass
 
     @abstractmethod
     def kill(self):
+        """Terminate/kill the cmd/script/function that is being run."""
         pass
 
     @abstractmethod
     def check_alive(self):
+        """Return True if the cmd/script/function is still being run."""
         pass
 
     # TODO: For requing, retrying jobs
     # @property
     # def is_finished(self):
-    #     return self.exit == 0 and not self.is_alive
+    #     return self._exit == 0 and not self.is_alive
 
     def __str__(self):
+        """List public job attributes as a ';' seperated list."""
         items = [
             self.__class__.__name__,
             self.id,
-            self.ppid,
-            self.pid,
             self.status,
             self.owner,
             self.priority,
             datetime2str(self.created_at),
         ]
         items = [str(x) if x is not None else " - " for x in items]
-        t_run = list(self.get_runtime().values())
+        t_run = list(self._get_runtime().values())
         items += [f"{t_run[0]}-{t_run[1]:02d}:{t_run[2]:02d}:{t_run[3]:02d}"]
         return "; ".join(items)
 
     @timedelta2dict
-    def get_runtime(self):
-        t0 = self.start_time
-        tfin = self.end_time
+    def _get_runtime(self):
+        t0 = self._start_time
+        tfin = self._end_time
         if t0 is None:
             return datetime.timedelta(0)
         elif tfin is None:
@@ -70,10 +80,17 @@ class Job(ABC):
 
 
 class BashJob(Job):
-    def __init__(self, cmd, priority: int = 0):
-        super().__init__(priority)
+    def __init__(self, cmd, id = None, priority: int = 0, name: str = None, output_dir: str = "./outputs"):
+        super().__init__(id, priority)
         self.cmd = cmd
         self.status = "pending"
+        self.name = name if name != None else self.get_script_name(cmd)
+        self.pid = None # process id
+        self.ppid = None # parent process id
+        
+        os.makedirs(output_dir, exist_ok=True)
+        self._out = os.path.join(output_dir, f"{self.name}_{self.id}.o")
+        self._err = os.path.join(output_dir, f"{self.name}_{self.id}.e")
 
     def _byte2str(self, byte):
         try:
@@ -83,23 +100,36 @@ class BashJob(Job):
         finally:
             return byte
 
+    def get_script_name(self, cmd):
+        for tmpl in["[a-z]+\.[a-z]+.", "[a-z]+."]: # matches i.e. "script.py" or i.e. "echo "
+            match = re.search(tmpl, cmd)
+            if match is not None:
+                break
+
+        return match.group(0)[:-1]
+
     def run(self):
+        # use subprocess.run instead? One user suggested this
+        # (https://stackoverflow.com/questions/62066599/how-to-get-the-pid-of-the-process-started-by-subprocess-run-and-kill-it)
+        add_io2cmd = lambda cmd: f"{cmd} > {self._out} 2> {self._err}"
         p = subprocess.Popen(
-            self.cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            add_io2cmd(self.cmd), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
         stdout, stderr = (self._byte2str(i) for i in p.communicate())
-        self.exit = p.returncode
+        self._exit = p.returncode
         return p.returncode, stdout, stderr
 
     def kill(self):
-        # subprocess.call(f"kill -9 {self.job.pid}", shell=True, stdout=devnull, stderr=devnull)
-        pass
+        # UNTESTED !!!
+        parent = psutil.Process(self.pid)
+        for child in parent.children(recursive=True):
+            child.kill()
+        parent.kill()
 
     def check_alive(self):
         return (
             psutil.pid_exists(self.pid) and psutil.Process(self.pid).ppid() == self.ppid
         )
-
 
 def job_from_dict(job_type, dict):
     if "bash" in job_type.lower():

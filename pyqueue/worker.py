@@ -3,10 +3,8 @@ import os
 import time
 import xmlrpc.client
 
-from jobs import *
-from utils import timedelta2dict
-
-
+from pyqueue.jobs import *
+from pyqueue.utils import timedelta2dict
 
 class Worker:
     def __init__(self, queue_server = None):
@@ -28,17 +26,21 @@ class Worker:
     @timedelta2dict
     def idletime(self):
         if self._tidle is None:
-            return float("inf")
+            return datetime.timedelta(0)
         else:
             return datetime.datetime.now() - self._tidle
 
-    def update_worker_status(self, pid, status="idle"):
-        self.current_job = pid
+    def update_worker_status(self, job_id, status="idle"):
+        self.current_job = job_id
         self.queue_server.update_worker_status(self.pid, {"status": status, "current_job": self.current_job})
         if status == "idle":
             self._tidle = datetime.datetime.now()
 
     def start(self):
+        print("Starting worker")
+        assert self.queue_server != None, "No queue sever was registered."
+        self.update_worker_status(None, "idle")
+        
         while True:
             if self.queue_server.get_num_pending_jobs() > 0:
                 instructions = self.queue_server.acquire_job()
@@ -58,7 +60,7 @@ class Worker:
                             "status": "running",
                             "pid": newpid,
                             "ppid": job.ppid,
-                            "start_time": datetime.datetime.now(),
+                            "_start_time": datetime.datetime.now(),
                         },
                     )
                     print(
@@ -79,7 +81,7 @@ class Worker:
                         {
                             "exit": 1,
                             "status": "finished",
-                            "end_time": datetime.datetime.now(),
+                            "_end_time": datetime.datetime.now(),
                         },
                     )  # reset ppid/pid ?
 
@@ -89,23 +91,26 @@ class Worker:
                     # except:
                     #     self.queue_server.update_job_status(job.id, {"exit": 0, "status": "failed"})
 
-                self.current_job = None
                 self.update_worker_status(None, "idle")
             else:
-                print("waiting...")
+                if self.idletime()["seconds"] < 5:
+                    print("Worker is currently idle and accepting jobs")
                 time.sleep(5)
 
             if self.idletime()["minutes"] > 1:
                 # if queue empty for several minutes -> kill worker
                 # deregister worker
                 break
-        print("No more jobs queued. Worker was shut down.")
+        print("Worker was shut down due to inactivity.")
 
     def kill(self):
         pass
 
 
-queue_server = xmlrpc.client.self.queue_serverProxy("http://localhost:8000", allow_none=True)
-worker = Worker()
-worker.register_with_queue_server(queue_server)
-worker.start()
+if __name__ == "__main__":
+    
+    # init logger
+    queue_server = xmlrpc.client.ServerProxy("http://localhost:8000", allow_none=True)
+    worker = Worker()
+    worker.register_with_queue_server(queue_server)
+    worker.start()

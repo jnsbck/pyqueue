@@ -58,10 +58,10 @@ class QueueClient(object):
 
     def squeue(self):
         parser = argparse.ArgumentParser(description="Show queue status")
-        parser.add_argument("-m", "--me")
-        parser.add_argument("-j", "--job")
-        parser.add_argument("-n", "--name")
-        parser.add_argument("-u", "--user")
+        parser.add_argument("-m", "--me", help="only show my jobs in the queue")
+        parser.add_argument("-j", "--job", help="only show job with a given ID")
+        parser.add_argument("-n", "--name", help="only show jobs with a specifeid name")
+        parser.add_argument("-u", "--user", help="only show jobs queued by a specifeid user")
         # now that we're inside a subcommand, ignore the first TWO argvs
         args = parser.parse_args(sys.argv[2:])
 
@@ -71,8 +71,6 @@ class QueueClient(object):
                     "idx",
                     "type",
                     "id",
-                    "ppid",
-                    "pid",
                     "status",
                     "owner",
                     "priority",
@@ -103,7 +101,15 @@ class QueueClient(object):
         # show some of the client info
         # ready to accept jobs
         print("user: %s, date-time: %s, pid: %s" % self.get_client_info())
-        print(server.info())
+        print(server.sinfo())
+
+    def slog(self):
+        parser = argparse.ArgumentParser(
+            description="Show current system logs."
+        )
+        args = parser.parse_args(sys.argv[2:])
+
+        print(server.slog())
 
     def sbatch(self):
         parser = argparse.ArgumentParser(description="submit job")
@@ -119,10 +125,10 @@ class QueueClient(object):
 
     def scancel(self):
         parser = argparse.ArgumentParser(description="cancel job")
-        parser.add_argument("-m", "--me")
-        parser.add_argument("-j", "--job")
-        parser.add_argument("-n", "--name")
-        parser.add_argument("-u", "--user")
+        parser.add_argument("-m", "--me", help="cancel my jobs in the queue")
+        parser.add_argument("-j", "--job", help="cancel job with a given ID") # needs access protections!!!
+        parser.add_argument("-n", "--name", help="cancel jobs with a specifeid name") # needs access protections!!!
+        parser.add_argument("-u", "--user", help="cancel jobs queued by a specified user") # needs access protections!!!
         args = parser.parse_args(sys.argv[2:])
 
         print("Running scancel")
