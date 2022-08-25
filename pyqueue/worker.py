@@ -3,11 +3,13 @@ import os
 import time
 import xmlrpc.client
 
+from pyqueue.helpers import timedelta2dict
 from pyqueue.jobs import *
-from pyqueue.utils import timedelta2dict
+from pyqueue.utils import try_unpickle
+
 
 class Worker:
-    def __init__(self, queue_server = None):
+    def __init__(self, queue_server=None):
         self.current_job = None
         self.pid = os.getpid()
         self._tup = datetime.datetime.now()
@@ -17,7 +19,10 @@ class Worker:
 
     def register_with_queue_server(self, server):
         self.queue_server = server
-        self.queue_server.register_worker(self.pid, {"t_up": self._tup, "status": self.status, "current_job": self.current_job})
+        self.queue_server.register_worker(
+            self.pid,
+            {"t_up": self._tup, "status": self.status, "current_job": self.current_job},
+        )
 
     def show_uptime(self):
         dt = datetime.datetime.now() - self._tup
@@ -32,7 +37,9 @@ class Worker:
 
     def update_worker_status(self, job_id, status="idle"):
         self.current_job = job_id
-        self.queue_server.update_worker_status(self.pid, {"status": status, "current_job": self.current_job})
+        self.queue_server.update_worker_status(
+            self.pid, {"status": status, "current_job": self.current_job}
+        )
         if status == "idle":
             self._tidle = datetime.datetime.now()
 
@@ -40,11 +47,11 @@ class Worker:
         print("Starting worker")
         assert self.queue_server != None, "No queue sever was registered."
         self.update_worker_status(None, "idle")
-        
+
         while True:
             if self.queue_server.get_num_pending_jobs() > 0:
-                instructions = self.queue_server.acquire_job()
-                job = job_from_dict(*instructions)
+                job = self.queue_server.acquire_job()
+                job = try_unpickle(job)
                 self.update_worker_status(job.id, "busy")
 
                 newpid = os.fork()
@@ -108,7 +115,7 @@ class Worker:
 
 
 if __name__ == "__main__":
-    
+
     # init logger
     queue_server = xmlrpc.client.ServerProxy("http://localhost:8000", allow_none=True)
     worker = Worker()

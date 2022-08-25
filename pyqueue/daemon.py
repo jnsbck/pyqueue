@@ -4,21 +4,18 @@ from xmlrpc.client import DateTime as XMLRPCDateTime
 from xmlrpc.server import SimpleXMLRPCServer
 
 from pyqueue.jobs import *
-from pyqueue.utils import fix_datetime
+from pyqueue.utils import check_pickle, fix_datetime, try_unpickle
 
 
 class Queue:
-    def __init__(self, jobs: List[Job] = []):
-        self.jobs = jobs
+    def __init__(self, jobs: List[Job] = None):
+        self.jobs = [] if jobs is None else jobs
 
     def get_jobs(self, status="any"):
         if status == "any" or status == "all":
             return self.jobs
         else:
             return [job for job in self.jobs if job.status == status]
-
-    def __getitem__(self, i):
-        return self.jobs[i]
 
     def get_dict(self):
         return {j.id: j for j in self.jobs}
@@ -52,11 +49,28 @@ class Queue:
     def has_alive(self):
         return len(self.running_jobs) > 0
 
+    def __getitem__(self, i):
+        return self.jobs[i]
+
+    def __call__(self):
+        return self.jobs
+
+    def __contains__(self, o):
+        return o in self.jobs
+
     def __len__(self):
         return len(self.get_pending_jobs())
 
-    def __str__(self):
-        return "\n".join([f"{i}; " + job.__str__() for i, job in enumerate(self.jobs)])
+    def __str__(self, filter={"finished": False}):
+        jobs = self.jobs.copy()
+        for key, value in filter.items():
+            if key == "finished" and not value:
+                jobs = [job for job in jobs if job.status != "finished"]
+            elif key == "finished" and value:
+                pass
+            else:
+                jobs = [job for job in jobs if job.__dict__[key] == value]
+        return "\n".join([f"{i}; " + job.__str__() for i, job in enumerate(jobs)])
 
 
 class CtlDaemon:
@@ -67,13 +81,17 @@ class CtlDaemon:
     def get_num_pending_jobs(self):
         return len(self.queue)
 
+    def get_num_workers(self):
+        return len(self.workers)
+
     def get_running_ids(self):
         return [job.id for job in self.queue if job.status == "running"]
 
+    @check_pickle
     def acquire_job(self):
         job = self.queue.next_job()
         job.status = "submitted"
-        return job.__class__.__name__, job.__dict__
+        return job
 
     def update_job_status(self, job_id, kwargs):
         job = self.queue.get_dict()[job_id]
@@ -90,7 +108,10 @@ class CtlDaemon:
             else:
                 self.workers[pid][key] = val
 
-    def submit_job(self, job):
+    @check_pickle  # pickle & unpickle so it can be sent or received.
+    def submit_job(self, job: Job or str):
+        job = try_unpickle(job)
+        assert isinstance(job, Job)
         self.queue.append(job)
 
     def check_alive(self, id):
@@ -107,8 +128,33 @@ class CtlDaemon:
         self.submit_job(job)
         # if len(queue) > 1, and no active, worker -> register new worker
 
-    def squeue(self):
-        return self.queue.__str__()
+    def squeue(self, user_name, filter={"me": False}):
+        if filter["me"]:
+            filter["user"] = user_name
+        filter.pop("me")
+        filter["owner"] = filter.pop("user")  # job has owner, client has user
+        filter["id"] = filter.pop("job")  # job has id, client has job
+
+        # remove all flags that were not set.
+        filter = {k: v for k, v in filter.items() if v is not None}
+
+        header = (
+            "; ".join(
+                [
+                    "idx",
+                    "type",
+                    "id",
+                    "name",
+                    "status",
+                    "owner",
+                    "priority",
+                    "submitted",
+                    "time",
+                ]
+            )
+            + "\n"
+        )
+        return header + self.queue.__str__(filter=filter)
 
     def scancel(self, id):
         if self.queue.get_dict()[id] == "running":
@@ -117,9 +163,8 @@ class CtlDaemon:
                 pid = self.get_job_pid(job_id)
 
                 p = psutil.Process(pid)
-                p.terminate()  #or p.kill()
+                p.terminate()  # or p.kill()
         self.queue.remove(id)
-
 
     def sinfo(self):
         # current system info string
@@ -134,7 +179,7 @@ class CtlDaemon:
         data = self.workers.pop(pid)
         # send interupt signal to pid of worker process
         p = psutil.Process(pid)
-        p.terminate()  #or p.kill()
+        p.terminate()  # or p.kill()
 
 
 def main():
@@ -157,4 +202,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
