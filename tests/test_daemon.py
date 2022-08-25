@@ -1,77 +1,133 @@
 # test all deamon functionality
-from pyqueue.daemon import CtlDaemon
-from tests.utils import DummyJob
-from pyqueue.worker import Worker
-
-from xmlrpc.server import SimpleXMLRPCServer
+import threading
+import time
 import xmlrpc.client
-import os
+from xmlrpc.server import SimpleXMLRPCServer
 
-def test_submit_update_and_get_jobs(server = None):
+import pytest
 
-    daemon = CtlDaemon() if server is None else server
-    job1 = DummyJob(priority=0, status="pending") 
+from pyqueue.daemon import CtlDaemon
+from pyqueue.utils import try_pickle, try_unpickle
+from pyqueue.worker import Worker
+from tests.utils import DummyJob
+
+
+def test_submit_update_and_get_jobs(server=None, client=None):
+    daemon = CtlDaemon() if server is None else server.instance
+    client = daemon if client is None else client
+
+    job1 = DummyJob(priority=0, status="pending")
     job2 = DummyJob(priority=1, status="pending")
     job3 = DummyJob(priority=2, status="pending")
-    daemon.submit_job(job1)
-    daemon.submit_job(job2)
-    daemon.submit_job(job3)
+    client.submit_job(try_pickle(job1))
+    client.submit_job(try_pickle(job2))
+    client.submit_job(try_pickle(job3))
 
     # test update job status
-    daemon.update_job_status(job3.id, {"status": "running"})
-    assert daemon.queue.get_dict()[job3.id].status == "running"
-
+    client.update_job_status(job3.id, {"status": "running"})
+    assert (
+        daemon.queue.get_dict()[job3.id].status == "running"
+    ), "job status could not be updated"
     # test get_running_jobs and get_pending_jobs
-    assert daemon.get_num_pending_jobs() == 2
-    assert daemon.get_running_ids() == [job3.id]
+    assert (
+        daemon.get_num_pending_jobs() == 2
+    ), "number of pending jobs does not match the expected number"
+    assert daemon.get_running_ids() == [
+        job3.id
+    ], "the ID of the running job is not the correct"
 
     # test if jobs come back in correct order
-    _, job1 = daemon.acquire_job()
-    _, job2 = daemon.acquire_job()
-    
+    job1 = try_unpickle(client.acquire_job())
+    job2 = try_unpickle(client.acquire_job())
+
     # should throw IndexError since list of pending jobs is empty
     try:
-        daemon.acquire_job()
+        client.acquire_job()
     except IndexError:
         pass
-    
-    assert job1["status"] != "running"
-    assert job2["status"] != "running"
-    assert job1["priority"] > job2["priority"] 
+    except xmlrpc.client.Fault as exception:
+        if "IndexError" in exception.faultString:
+            pass
+        else:
+            raise exception
+
+    assert (
+        job1.status == "submitted"
+    ), f"Job status should equal submitted, instead is {job1.status}"
+    assert (
+        job2.status == "submitted"
+    ), f"Job status should equal submitted, instead is {job2.status}"
+    assert job1.priority > job2.priority, "Jobs were fetched in the wrong order"
 
 
-def test_submit_job(server = None):
-    daemon = CtlDaemon() if server is None else server
-    job = DummyJob(priority=0, status="pending") 
-    daemon.submit_job(job)
-    assert job in daemon.queue
+def test_submit_job(server=None, client=None):
+    daemon = CtlDaemon() if server is None else server.instance
+    client = daemon if client is None else client
+
+    job = DummyJob(priority=0, status="pending")
+    client.submit_job(try_pickle(job))
+
+    assert (
+        job in daemon.queue
+    ), "Either no or not the same job that was submitted was queued."
 
 
-def test_update_worker_status(server = None):
+def test_update_worker_status(server=None, client=None):
     worker = Worker()
-    daemon = CtlDaemon() if server is None else server
-    
-    worker.register_with_queue_server(daemon)
-    assert len(daemon.workers) > 0
+    daemon = CtlDaemon() if server is None else server.instance
+    client = daemon if client is None else client
+
+    worker.register_with_queue_server(client)
+    assert len(daemon.workers) > 0, "No worker was registered."
     pid = list(daemon.workers.keys())[0]
-    
-    daemon.update_worker_status(pid, {"status": "running"})
-    assert daemon.workers[pid]["status"] == "running"
+
+    client.update_worker_status(pid, {"status": "running"})
+    status = daemon.workers[pid]["status"]
+    assert status == "running", f"job status should be running, instead it is {status}"
 
 
-# def test_server_client_interactions():
-#     daemon = SimpleXMLRPCServer(("localhost", 8001), allow_none=True, bind_and_activate=False) # problems with reusing ports
-#     daemon.register_introspection_functions()
-#     daemon.register_instance(CtlDaemon())
+@pytest.mark.parametrize(
+    "test",
+    [test_update_worker_status, test_submit_update_and_get_jobs, test_submit_job],
+)
+def test_server_client_interaction(test):
+    class StoppableServerThread(threading.Thread):
+        """Thread class with a stop() method. The thread itself has to check
+        regularly for the stopped() condition."""
 
-#     newpid = os.fork()
-#     if newpid == 0:
-#         daemon.serve_forever()
-#         os._exit(0)
-#     else:
-#         queue_server = xmlrpc.client.ServerProxy("http://localhost:8001", allow_none=True)
+        def __init__(self):
+            self.server = SimpleXMLRPCServer(("localhost", 8001), allow_none=True)
+            self.server.register_introspection_functions()
+            self.server.register_instance(CtlDaemon())
 
-#         # test_submit_update_and_get_jobs(queue_server)
-#         # test_submit_job(queue_server)
-#         # test_update_worker_status(queue_server)
-#         daemon.server_close()
+            super(StoppableServerThread, self).__init__(
+                target=self.server.serve_forever, daemon=True
+            )
+            self._stop_event = threading.Event()
+
+        def stop(self):
+            self.server.server_close()
+            self._stop_event.set()
+
+        def stopped(self):
+            return self._stop_event.is_set()
+
+    def test_with_server_and_client(test):
+        thread = StoppableServerThread()
+        server = thread.server
+        thread.start()
+
+        client = xmlrpc.client.ServerProxy("http://localhost:8001", allow_none=True)
+
+        # ensures that the server is closed before the exception is raised!
+        try:
+            test(server, client)
+            thread.stop()
+        except Exception as exception:
+            thread.stop()
+            raise exception
+
+    test_with_server_and_client(test)
+    time.sleep(
+        0.5
+    )  # for some reason without this OSError: [Errno 98] (Address already in use) is raised
