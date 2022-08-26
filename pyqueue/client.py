@@ -184,14 +184,24 @@ class QueueClient(object):
                 daemon = StoppableServer()
                 pid = os.fork() 
                 if pid > 0:
-                    print(f"A pyqueue daemon is listening on localhost:{8000}.")
+                    for i in range(5):
+                        try:
+                            self.server.sinfo()
+                            print(f"A pyqueue daemon is listening on localhost:{8000}.")
+                            break
+                        except ConnectionRefusedError:
+                            print(f"Could not connect to daemon.") if i == 4 else None
                 else:
                     daemon.serve_forever()           
                 sys.exit(0)
         
         elif "worker" in args.service.lower():
-            # p = subprocess.Popen("python3 -m pyqueue.worker", close_fds=True, shell=True, stdout=subprocess.PIPE,
-            # stderr=subprocess.PIPE)
+            pid = os.fork() 
+            if pid > 0:
+                print(f"A pyqueue daemon is listening on localhost:{8000}.")
+            else:
+                daemon.serve_forever()           
+            sys.exit(0)
             print("DUMMY OUTPUT: launch worker")
         
         else:
