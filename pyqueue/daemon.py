@@ -1,16 +1,17 @@
 # This file is part of pyqueue, a simple slurm like job queue written in python. pyqueue is licensed
 # under the GNU General Public License v3, see <https://www.gnu.org/licenses/>. Copyright 2022 Jonas Beck
 
+import signal
 import sys
+import threading
 from typing import List
 from xmlrpc.client import DateTime as XMLRPCDateTime
 from xmlrpc.server import SimpleXMLRPCServer
 
+from pyqueue.helpers import dt2dict, timedeltastr
 from pyqueue.jobs import *
 from pyqueue.utils import check_pickle, fix_datetime, try_unpickle
-from pyqueue.helpers import dt2dict, timedeltastr
-import threading
-import signal
+
 
 class Queue:
     def __init__(self, jobs: List[Job] = None):
@@ -78,11 +79,11 @@ class Queue:
         return "\n".join([f"{i}; " + job.__str__() for i, job in enumerate(jobs)])
 
 
-class StoppableServer():
+class StoppableServer:
     def __init__(self, port=8000):
         def shutdown(kill_thread=True):
             self.server.server_close()
-             # sys.exit() produces error and leaces thread running therefore its killed
+            # sys.exit() produces error and leaces thread running therefore its killed
             if kill_thread:
                 os.kill(os.getpid(), signal.SIGTERM)
 
@@ -94,23 +95,25 @@ class StoppableServer():
     def serve_forever(self):
         return self.server.serve_forever()
 
+
 class StoppableServerThread(threading.Thread):
-        """Thread class with a stop() method. The thread itself has to check
-        regularly for the stopped() condition."""
+    """Thread class with a stop() method. The thread itself has to check
+    regularly for the stopped() condition."""
 
-        def __init__(self, port=8000, as_daemon=True):
-            self.server = StoppableServer()
-            self.port = port
+    def __init__(self, port=8000, as_daemon=True):
+        self.server = StoppableServer()
+        self.port = port
 
-            super(StoppableServerThread, self).__init__(
-                target=self.server.serve_forever, daemon=as_daemon
-            )
+        super(StoppableServerThread, self).__init__(
+            target=self.server.serve_forever, daemon=as_daemon
+        )
 
-        def stop(self):
-            self.server.server_close()
+    def stop(self):
+        self.server.server_close()
 
-        def stopped(self):
-            return self.server.socket.fileno() == -1
+    def stopped(self):
+        return self.server.socket.fileno() == -1
+
 
 class CtlDaemon:
     def __init__(self):
@@ -231,8 +234,11 @@ class CtlDaemon:
         msg = "Queue daemon is currently running.\n\n"
         msg += f"{self.get_num_workers()} active workers:" + "\n"
         msg += self.show_workers() + "\n"
-        msg += f"There are currently {self.get_num_pending_jobs()} jobs pending and {self.get_num_running_jobs()} running." + "\n\n"
-        msg +="Ready to accept jobs."
+        msg += (
+            f"There are currently {self.get_num_pending_jobs()} jobs pending and {self.get_num_running_jobs()} running."
+            + "\n\n"
+        )
+        msg += "Ready to accept jobs."
         return msg
 
     def register_worker(self, pid, kwargs):

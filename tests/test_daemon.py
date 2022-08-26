@@ -4,6 +4,7 @@
 import threading
 import time
 import xmlrpc.client
+
 import pytest
 
 from pyqueue.daemon import CtlDaemon, StoppableServerThread

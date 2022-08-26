@@ -4,18 +4,20 @@
 import codecs
 import datetime
 import pickle
+import time
 from collections.abc import Iterable
-from pyqueue.jobs import Job
-import time
 
-import time
+from pyqueue.jobs import Job
+
 
 def wait_until(somepredicate, timeout=5, period=0.25, *args, **kwargs):
-  mustend = time.time() + timeout
-  while time.time() < mustend:
-    if somepredicate(*args, **kwargs): return True
-    time.sleep(period)
-  return False
+    mustend = time.time() + timeout
+    while time.time() < mustend:
+        if somepredicate(*args, **kwargs):
+            return True
+        time.sleep(period)
+    return False
+
 
 def is_up(server):
     try:

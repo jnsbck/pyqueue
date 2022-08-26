@@ -8,6 +8,7 @@ def dt2dict(dt):
     d["minutes"], d["seconds"] = divmod(rem, 60)
     return d
 
+
 def timedelta2dict(f, *args, **kwargs):
     def wrapped_f(*args, **kwargs):
         out = f(*args, **kwargs)
@@ -23,6 +24,8 @@ def timedelta2dict(f, *args, **kwargs):
 
     return wrapped_f
 
-def timedeltastr(dict):
-    return "{}-{:02d}:{:02d}:{:02d}".format(dict["days"], dict["hours"], dict["minutes"], dict["seconds"])
 
+def timedeltastr(dict):
+    return "{}-{:02d}:{:02d}:{:02d}".format(
+        dict["days"], dict["hours"], dict["minutes"], dict["seconds"]
+    )

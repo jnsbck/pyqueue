@@ -7,9 +7,11 @@ import getpass
 import os
 import sys
 import xmlrpc.client
+
 from pyqueue.daemon import StoppableServer
-from pyqueue.utils import wait_until, is_up
+from pyqueue.utils import is_up, wait_until
 from pyqueue.worker import Worker
+
 
 class QueueClient(object):
     def __init__(self, server):
@@ -112,7 +114,11 @@ class QueueClient(object):
         # args = parser.parse_args(sys.argv[2:])
 
         # show some of the client info
-        print("date-time: {0}\nlogged in as user: {1}\ncurrent client pid: {2}\n".format(*self.get_client_info()))
+        print(
+            "date-time: {0}\nlogged in as user: {1}\ncurrent client pid: {2}\n".format(
+                *self.get_client_info()
+            )
+        )
         try:
             print(self.server.sinfo())
         except ConnectionRefusedError:
@@ -152,16 +158,18 @@ class QueueClient(object):
         )  # needs access protections!!!
         parser.add_argument(
             "-t", "--type", help="only show jobs queued filtered by type"
-        ) # needs access protections!!!
+        )  # needs access protections!!!
         parser.add_argument(
             "-s", "--status", help="only show jobs queued filtered by status"
-        ) # needs access protections!!!
+        )  # needs access protections!!!
         args = parser.parse_args(sys.argv[2:])
 
         print("DUMMY OUTPUT: Running scancel")
 
     def start(self):
-        parser = argparse.ArgumentParser(description="Start a pyqueue service [daemon, worker]")
+        parser = argparse.ArgumentParser(
+            description="Start a pyqueue service [daemon, worker]"
+        )
         parser.add_argument(
             "service",
             nargs="?",
@@ -183,34 +191,38 @@ class QueueClient(object):
                 self.server.sinfo()
             except ConnectionRefusedError:
                 daemon = StoppableServer()
-                pid = os.fork() 
+                pid = os.fork()
                 if pid > 0:
                     if wait_until(is_up, server=self.server):
                         print(f"A pyqueue daemon is listening on localhost:{8000}.")
                     else:
                         raise ConnectionRefusedError(f"Could not connect to daemon.")
                 else:
-                    daemon.serve_forever()           
+                    daemon.serve_forever()
                 sys.exit(0)
-        
+
         elif "worker" in args.service.lower():
             if is_up(self.server):
-                pid = os.fork() 
+                pid = os.fork()
                 if pid > 0:
                     pass
                 else:
                     worker = Worker()
                     worker.register_with_queue_server(self.server)
-                    worker.start()      
+                    worker.start()
                     print(f"Spawned a worker process with pid: {worker.pid}")
                 sys.exit(0)
             else:
-                print("No Daemon running.")        
+                print("No Daemon running.")
         else:
-            print(f"{args.service} is not a valid service, select one of [daemon, worker]")
+            print(
+                f"{args.service} is not a valid service, select one of [daemon, worker]"
+            )
 
     def stop(self):
-        parser = argparse.ArgumentParser(description="Stop a pyqueue service [daemon, worker]")
+        parser = argparse.ArgumentParser(
+            description="Stop a pyqueue service [daemon, worker]"
+        )
         parser.add_argument(
             "service",
             nargs="?",
@@ -242,15 +254,17 @@ class QueueClient(object):
                     try:
                         self.server.shutdown()
                     except ConnectionRefusedError:
-                        pass # Catches error caused by sigterm in shutdown
+                        pass  # Catches error caused by sigterm in shutdown
                 elif args.force:
                     try:
                         self.server.shutdown()
                     except ConnectionRefusedError:
-                        pass # Catches error caused by sigterm in shutdown
+                        pass  # Catches error caused by sigterm in shutdown
                 else:
-                    print(f"There are still {num_running} running and {num_pending} pending jobs. To stop the service use --force.")
-                
+                    print(
+                        f"There are still {num_running} running and {num_pending} pending jobs. To stop the service use --force."
+                    )
+
                 if not wait_until(is_up, server=self.server):
                     print("The pyqueue daemon was successfully shut down.")
                 else:
@@ -263,12 +277,16 @@ class QueueClient(object):
             # TODO: check if worker is active then needs --force
             print("DUMMY OUTPUT: worker X was stopped successfully")
         else:
-            print(f"{args.service} is not a valid service, select one of [daemon, worker]")
-    
+            print(
+                f"{args.service} is not a valid service, select one of [daemon, worker]"
+            )
+
+
 def main():
     server = xmlrpc.client.ServerProxy("http://localhost:8000", allow_none=True)
     QueueClient(server)
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
