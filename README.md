@@ -21,6 +21,8 @@ Supports sbatch, squeue, scancel, sinfo
 - [x] Add priorities
 - [ ] Add timing of jobs
 - [ ] setup.py
+    - [x] add setup.py
+    - [ ] test setup.py in VM
 - [x] License
 - [ ] System config file?
 
@@ -59,6 +61,7 @@ Supports sbatch, squeue, scancel, sinfo
 ---
 ### Worker
 #### Important
+- [ ] Worker is somewhat of a mess that needs fixing
 - [ ] ==NEXT== Add Worker I/O (output/error logs)
 - [x] add process logs with <pid>.err and <pid>.out
 - [x] Add Worker
