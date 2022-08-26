@@ -2,11 +2,9 @@
 import threading
 import time
 import xmlrpc.client
-from xmlrpc.server import SimpleXMLRPCServer
-
 import pytest
 
-from pyqueue.daemon import CtlDaemon
+from pyqueue.daemon import CtlDaemon, StoppableServerThread
 from pyqueue.utils import try_pickle, try_unpickle
 from pyqueue.worker import Worker
 from tests.utils import DummyJob
@@ -91,27 +89,6 @@ def test_update_worker_status(server=None, client=None):
     [test_update_worker_status, test_submit_update_and_get_jobs, test_submit_job],
 )
 def test_server_client_interaction(test):
-    class StoppableServerThread(threading.Thread):
-        """Thread class with a stop() method. The thread itself has to check
-        regularly for the stopped() condition."""
-
-        def __init__(self):
-            self.server = SimpleXMLRPCServer(("localhost", 8001), allow_none=True)
-            self.server.register_introspection_functions()
-            self.server.register_instance(CtlDaemon())
-
-            super(StoppableServerThread, self).__init__(
-                target=self.server.serve_forever, daemon=True
-            )
-            self._stop_event = threading.Event()
-
-        def stop(self):
-            self.server.server_close()
-            self._stop_event.set()
-
-        def stopped(self):
-            return self._stop_event.is_set()
-
     def test_with_server_and_client(test):
         thread = StoppableServerThread()
         server = thread.server

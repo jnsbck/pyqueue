@@ -5,6 +5,7 @@ from xmlrpc.server import SimpleXMLRPCServer
 
 from pyqueue.jobs import *
 from pyqueue.utils import check_pickle, fix_datetime, try_unpickle
+import threading
 
 
 class Queue:
@@ -73,6 +74,26 @@ class Queue:
         return "\n".join([f"{i}; " + job.__str__() for i, job in enumerate(jobs)])
 
 
+class StoppableServerThread(threading.Thread):
+        """Thread class with a stop() method. The thread itself has to check
+        regularly for the stopped() condition."""
+
+        def __init__(self, port=8000):
+            self.server = SimpleXMLRPCServer(("localhost", port), allow_none=True)
+            self.server.register_introspection_functions()
+            self.server.register_instance(CtlDaemon())
+            self.port = port
+
+            super(StoppableServerThread, self).__init__(
+                target=self.server.serve_forever, daemon=True
+            )
+
+        def stop(self):
+            self.server.server_close()
+
+        def stopped(self):
+            return self.server.socket.fileno() == -1
+
 class CtlDaemon:
     def __init__(self):
         self.queue = Queue()
@@ -81,11 +102,26 @@ class CtlDaemon:
     def get_num_pending_jobs(self):
         return len(self.queue)
 
+    def get_num_running_jobs(self):
+        return len(self.get_running_ids())
+
     def get_num_workers(self):
         return len(self.workers)
 
     def get_running_ids(self):
         return [job.id for job in self.queue if job.status == "running"]
+
+    def show_workers(self):
+        msg = ""
+        if self.get_num_workers() > 0:
+            msg += "pid; uptime; status; current job\n"
+        for worker_id, status in self.workers.items():
+            msg += f"{worker_id}: "
+            values = list(status.values())
+            values[0] = fix_datetime(values[0]).strftime("%H:%M:%S, %d.%m.%Y")
+            values[-1] = " - " if values[-1] is None else values[-1]
+            msg += "; ".join(values) + "\n"
+        return msg
 
     @check_pickle
     def acquire_job(self):
@@ -167,9 +203,12 @@ class CtlDaemon:
         self.queue.remove(id)
 
     def sinfo(self):
-        # current system info string
-        # number of running, pending, etc. number of workers, ...
-        pass
+        msg = "Queue daemon is currently running.\n\n"
+        msg += f"{self.get_num_workers()} active workers:" + "\n"
+        msg += self.show_workers() + "\n"
+        msg += f"There are currently {self.get_num_pending_jobs()} jobs pending and {self.get_num_running_jobs()} running." + "\n\n"
+        msg +="Ready to accept jobs."
+        return msg
 
     def register_worker(self, pid, kwargs):
         self.workers.update({pid: kwargs})

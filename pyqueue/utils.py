@@ -2,7 +2,6 @@ import codecs
 import datetime
 import pickle
 from collections.abc import Iterable
-
 from pyqueue.jobs import Job
 
 

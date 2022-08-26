@@ -7,19 +7,22 @@ Supports sbatch, squeue, scancel, sinfo
 
 ### General
 #### Important
-- [ ] Add logging (server / CtlDaemon and workers)
+- [ ] ==NEXT== Add logging (server / CtlDaemon and workers)
 - [ ] Add error handling and exceptions for jobs (also Keyboard Interrupt of server / worker)
 
 #### Nice to have
 - [ ] Add tests
     - [x] tests for all job types
     - [x] tests for daemon
-    - [ ] tests for worker
+    - [ ] ==NEXT== tests for worker
     - [ ] tests for client
-- [ ] Add Type Hinting and Documentation
+- [ ] Add Type Hinting and Documentation and comments
 - [x] Add users
 - [x] Add priorities
 - [ ] Add timing of jobs
+- [ ] setup.py
+- [ ] License
+- [ ] System config file?
 
 ---
 ### Client
@@ -34,13 +37,13 @@ Supports sbatch, squeue, scancel, sinfo
     - [x] add flag to show user
     - [x] add flag to show me
     - [x] add flag to show id
-- [ ] make sinfo nice
+- [x] make sinfo nice
 
 ---
 ### Server
 #### Important
 - [x] Only allow one server to run at a time!
-- [ ] make sbatch work nicely
+- [ ] ==NEXT== make sbatch work nicely
 - [-] make scancel work
 - [x] Send and receive jobs as pickle, rather than dict
 
@@ -49,12 +52,14 @@ Supports sbatch, squeue, scancel, sinfo
 - [ ] Make client functions accept kwargs
 - [ ] Register the workers automatically (up to max number of workers, as specified in kwargs)
 - [ ] Remove finished jobs from queue (all or if they are too old)
+- [ ] Change to different protocol i.e. HTTP? (one that does not need pickling of objects)
+- [ ] Look into server option `register_instance(instance, allow_dotted_names=False)` that could expose class variables and allow to change them without the dictionary hussle of updating them
 
 
 ---
 ### Worker
 #### Important
-- [ ] Add Worker I/O (output/error logs)
+- [ ] ==NEXT== Add Worker I/O (output/error logs)
 - [x] add process logs with <pid>.err and <pid>.out
 - [x] Add Worker
 
@@ -63,6 +68,13 @@ Supports sbatch, squeue, scancel, sinfo
 - [ ] Add CallableJob where job.run is just running a python function
 - [ ] Add shutdown function at the end (orderly shutdown)
 - [ ] Add option to rerun failed jobs (x times, at the end, requeue them...)
+
+
+### Jobs
+#### Important
+
+#### Nice to have
+- [ ] DockerJob
 
 
 
