@@ -8,6 +8,7 @@ from xmlrpc.server import SimpleXMLRPCServer
 
 from pyqueue.jobs import *
 from pyqueue.utils import check_pickle, fix_datetime, try_unpickle
+from pyqueue.helpers import dt2dict, timedeltastr
 import threading
 import signal
 
@@ -79,10 +80,11 @@ class Queue:
 
 class StoppableServer():
     def __init__(self, port=8000):
-        def shutdown():
+        def shutdown(kill_thread=True):
             self.server.server_close()
              # sys.exit() produces error and leaces thread running therefore its killed
-            os.kill(os.getpid(), signal.SIGTERM)
+            if kill_thread:
+                os.kill(os.getpid(), signal.SIGTERM)
 
         self.server = SimpleXMLRPCServer(("localhost", port), allow_none=True)
         self.server.register_introspection_functions()
@@ -132,9 +134,10 @@ class CtlDaemon:
         if self.get_num_workers() > 0:
             msg += "pid; uptime; status; current job\n"
         for worker_id, status in self.workers.items():
-            msg += f"{worker_id}: "
+            msg += f"{worker_id}; "
             values = list(status.values())
-            values[0] = fix_datetime(values[0]).strftime("%H:%M:%S, %d.%m.%Y")
+            uptime = dt2dict(datetime.datetime.now() - fix_datetime(values[0]))
+            values[0] = timedeltastr(uptime)
             values[-1] = " - " if values[-1] is None else values[-1]
             msg += "; ".join(values) + "\n"
         return msg
@@ -172,6 +175,11 @@ class CtlDaemon:
 
     def get_job_pid(self, id):
         return self.queue.get_dict()[id].pid
+
+    def remove_killed_workers(self):
+        tracked_workers = self.workers
+        for pid in tracked_workers:
+            None if psutil.pid_exists(pid) else self.workers.pop(pid)
 
     # ------------------ CLIENT FUNCTIONALITY -------------------
     def sbatch(self, cmd, kwargs):
@@ -219,6 +227,7 @@ class CtlDaemon:
         self.queue.remove(id)
 
     def sinfo(self):
+        self.remove_killed_workers()
         msg = "Queue daemon is currently running.\n\n"
         msg += f"{self.get_num_workers()} active workers:" + "\n"
         msg += self.show_workers() + "\n"

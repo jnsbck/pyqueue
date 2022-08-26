@@ -8,7 +8,8 @@ import os
 import sys
 import xmlrpc.client
 from pyqueue.daemon import StoppableServer
-
+from pyqueue.utils import wait_until, is_up
+from pyqueue.worker import Worker
 
 class QueueClient(object):
     def __init__(self, server):
@@ -184,26 +185,27 @@ class QueueClient(object):
                 daemon = StoppableServer()
                 pid = os.fork() 
                 if pid > 0:
-                    for i in range(5):
-                        try:
-                            self.server.sinfo()
-                            print(f"A pyqueue daemon is listening on localhost:{8000}.")
-                            break
-                        except ConnectionRefusedError:
-                            print(f"Could not connect to daemon.") if i == 4 else None
+                    if wait_until(is_up, server=self.server):
+                        print(f"A pyqueue daemon is listening on localhost:{8000}.")
+                    else:
+                        raise ConnectionRefusedError(f"Could not connect to daemon.")
                 else:
                     daemon.serve_forever()           
                 sys.exit(0)
         
         elif "worker" in args.service.lower():
-            pid = os.fork() 
-            if pid > 0:
-                print(f"A pyqueue daemon is listening on localhost:{8000}.")
+            if is_up(self.server):
+                pid = os.fork() 
+                if pid > 0:
+                    pass
+                else:
+                    worker = Worker()
+                    worker.register_with_queue_server(self.server)
+                    worker.start()      
+                    print(f"Spawned a worker process with pid: {worker.pid}")
+                sys.exit(0)
             else:
-                daemon.serve_forever()           
-            sys.exit(0)
-            print("DUMMY OUTPUT: launch worker")
-        
+                print("No Daemon running.")        
         else:
             print(f"{args.service} is not a valid service, select one of [daemon, worker]")
 
@@ -212,6 +214,7 @@ class QueueClient(object):
         parser.add_argument(
             "service",
             nargs="?",
+            choices=["daemon", "worker"],
             help="Service to start. [daemon, worker]",
         )
         parser.add_argument(
@@ -236,28 +239,34 @@ class QueueClient(object):
                 num_pending = self.server.get_num_pending_jobs()
                 num_running = self.server.get_num_running_jobs()
                 if num_pending == 0 and num_running == 0:
-                    self.server.shutdown()
+                    try:
+                        self.server.shutdown()
+                    except ConnectionRefusedError:
+                        pass # Catches error caused by sigterm in shutdown
                 elif args.force:
-                    self.server.shutdown()
+                    try:
+                        self.server.shutdown()
+                    except ConnectionRefusedError:
+                        pass # Catches error caused by sigterm in shutdown
                 else:
                     print(f"There are still {num_running} running and {num_pending} pending jobs. To stop the service use --force.")
                 
-                # wait for daemon to finish
-                try:
-                    self.server.sinfo()
-                except ConnectionRefusedError:
+                if not wait_until(is_up, server=self.server):
                     print("The pyqueue daemon was successfully shut down.")
+                else:
+                    print("The pyqueue daemon could not be shut down.")
             except ConnectionRefusedError:
                 print("No daemon seems to be active.")
 
         elif "worker" in args.service.lower():
-            # stop worker
+            # TODO: stop worker
+            # TODO: check if worker is active then needs --force
             print("DUMMY OUTPUT: worker X was stopped successfully")
         else:
             print(f"{args.service} is not a valid service, select one of [daemon, worker]")
     
 def main():
-    server = xmlrpc.client.ServerProxy("http://localhost:8000")
+    server = xmlrpc.client.ServerProxy("http://localhost:8000", allow_none=True)
     QueueClient(server)
     sys.exit(0)
 
