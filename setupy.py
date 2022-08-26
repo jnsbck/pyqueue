@@ -1,3 +1,6 @@
+# This file is part of pyqueue, a simple slurm like job queue written in python. pyqueue is licensed
+# under the GNU General Public License v3, see <https://www.gnu.org/licenses/>. Copyright 2022 Jonas Beck
+
 from setuptools import setup, find_packages 
 
 with open("README.md") as fh:
@@ -12,7 +15,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/jnsbck/pyqueue",
-    license="GPLv3", # TO BE DETERMINED
+    # license="GPLv3", # TO BE DETERMINED
     packages=find_packages("pyqueue"),
     package_dir = {"": "pyqueue"},
     zip_safe=False,

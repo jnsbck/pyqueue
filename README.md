@@ -21,7 +21,7 @@ Supports sbatch, squeue, scancel, sinfo
 - [x] Add priorities
 - [ ] Add timing of jobs
 - [ ] setup.py
-- [ ] License
+- [x] License
 - [ ] System config file?
 
 ---
