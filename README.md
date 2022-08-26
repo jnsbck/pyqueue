@@ -27,7 +27,7 @@ Supports sbatch, squeue, scancel, sinfo
 ---
 ### Client
 #### Important
-
+- [x] Start/stop daemon from client
 
 #### Nice to have
 - [x] make squeue nice
