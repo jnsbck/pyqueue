@@ -7,7 +7,7 @@ import getpass
 import os
 import sys
 import xmlrpc.client
-from pyqueue.daemon import StoppableServerThread
+from pyqueue.daemon import StoppableServer
 
 
 class QueueClient(object):
@@ -28,7 +28,7 @@ class QueueClient(object):
         parser.add_argument(
             "command",
             nargs="?",
-            help="Subcommand to run. [sinfo, squeue, sbatch, scancel]",
+            help="Subcommand to run. [sinfo, squeue, sbatch, scancel, start, stop]",
         )
         parser.add_argument(
             "-v",
@@ -108,7 +108,7 @@ class QueueClient(object):
         parser = argparse.ArgumentParser(
             description="Show current system and queue status."
         )
-        args = parser.parse_args(sys.argv[2:])
+        # args = parser.parse_args(sys.argv[2:])
 
         # show some of the client info
         print("date-time: {0}\nlogged in as user: {1}\ncurrent client pid: {2}\n".format(*self.get_client_info()))
@@ -160,42 +160,45 @@ class QueueClient(object):
         print("DUMMY OUTPUT: Running scancel")
 
     def start(self):
-        parser = argparse.ArgumentParser(description="Start the pyqueue daemon")
+        parser = argparse.ArgumentParser(description="Start a pyqueue service [daemon, worker]")
         parser.add_argument(
             "service",
             nargs="?",
+            choices=["daemon", "worker"],
             help="Service to start. [daemon, worker]",
         )
-        parser.add_argument(
-            "-p",
-            "--port",
-            default=8000,
-            type=int,
-            help="specify the port the daemon is listening on",
-        )
+        # parser.add_argument(
+        #     "-p",
+        #     "--port",
+        #     default=8000,
+        #     type=int,
+        #     help="specify the port the daemon is listening on",
+        # )
         args = parser.parse_args(sys.argv[2:])
-        
         if args.service is None:
             parser.print_help()
-        elif "daemon" in args.service.lower():
-            # if self.deamon_thread is None or self.deamon_thread.stopped():
-            #     self.deamon_thread = StoppableServerThread()
-            #     self.deamon_thread.start()
-            #     print(f"The pyqueue daemon is listening on localhost:{self.deamon_thread.port}.")
-            # else:
-            #     print(f"A daemon seems to be already listening on localhost:{self.deamon_thread.port}")
-            print("DUMMY OUTPUT: daemon was started successfully")
-            print(self.sinfo())
+        elif "daemon" == args.service:
+            try:
+                self.server.sinfo()
+            except ConnectionRefusedError:
+                daemon = StoppableServer()
+                pid = os.fork() 
+                if pid > 0:
+                    print(f"A pyqueue daemon is listening on localhost:{8000}.")
+                else:
+                    daemon.serve_forever()           
+                sys.exit(0)
         
         elif "worker" in args.service.lower():
-            # launch worker
+            # p = subprocess.Popen("python3 -m pyqueue.worker", close_fds=True, shell=True, stdout=subprocess.PIPE,
+            # stderr=subprocess.PIPE)
             print("DUMMY OUTPUT: launch worker")
         
         else:
             print(f"{args.service} is not a valid service, select one of [daemon, worker]")
 
     def stop(self):
-        parser = argparse.ArgumentParser(description="Stop the pyqueue daemon")
+        parser = argparse.ArgumentParser(description="Stop a pyqueue service [daemon, worker]")
         parser.add_argument(
             "service",
             nargs="?",
@@ -214,24 +217,29 @@ class QueueClient(object):
             type=int,
             help="process id of the worker in question.",
         )
+
         args = parser.parse_args(sys.argv[2:])
         if args.service is None:
             parser.print_help()
         elif "daemon" in args.service.lower():
-            # num_pending = self.server.get_num_pending_jobs()
-            # num_running = self.server.get_num_running_jobs()
-            # if num_pending == 0 and num_running == 0:
-            #     self.deamon_thread.stop()
-            # elif args.force:
-            #     self.deamon_thread.stop()
-            # else:
-            #     print(f"There are still {num_running} running and {num_pending} pending jobs. To stop the service use --force.")
-            
-            # # wait for daemon to finish
-            # if self.deamon_thread.stopped():
-            #     print("The pyqueue daemon was successfully shut down.")
-            print("DUMMY OUTPUT: daemon was stopped successfully")
-        
+            try:
+                num_pending = self.server.get_num_pending_jobs()
+                num_running = self.server.get_num_running_jobs()
+                if num_pending == 0 and num_running == 0:
+                    self.server.shutdown()
+                elif args.force:
+                    self.server.shutdown()
+                else:
+                    print(f"There are still {num_running} running and {num_pending} pending jobs. To stop the service use --force.")
+                
+                # wait for daemon to finish
+                try:
+                    self.server.sinfo()
+                except ConnectionRefusedError:
+                    print("The pyqueue daemon was successfully shut down.")
+            except ConnectionRefusedError:
+                print("No daemon seems to be active.")
+
         elif "worker" in args.service.lower():
             # stop worker
             print("DUMMY OUTPUT: worker X was stopped successfully")
@@ -241,7 +249,7 @@ class QueueClient(object):
 def main():
     server = xmlrpc.client.ServerProxy("http://localhost:8000")
     QueueClient(server)
-    return 0
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()

@@ -9,7 +9,7 @@ from xmlrpc.server import SimpleXMLRPCServer
 from pyqueue.jobs import *
 from pyqueue.utils import check_pickle, fix_datetime, try_unpickle
 import threading
-
+import signal
 
 class Queue:
     def __init__(self, jobs: List[Job] = None):
@@ -77,18 +77,31 @@ class Queue:
         return "\n".join([f"{i}; " + job.__str__() for i, job in enumerate(jobs)])
 
 
+class StoppableServer():
+    def __init__(self, port=8000):
+        def shutdown():
+            self.server.server_close()
+             # sys.exit() produces error and leaces thread running therefore its killed
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        self.server = SimpleXMLRPCServer(("localhost", port), allow_none=True)
+        self.server.register_introspection_functions()
+        self.server.register_instance(CtlDaemon())
+        self.server.register_function(shutdown)
+
+    def serve_forever(self):
+        return self.server.serve_forever()
+
 class StoppableServerThread(threading.Thread):
         """Thread class with a stop() method. The thread itself has to check
         regularly for the stopped() condition."""
 
-        def __init__(self, port=8000):
-            self.server = SimpleXMLRPCServer(("localhost", port), allow_none=True)
-            self.server.register_introspection_functions()
-            self.server.register_instance(CtlDaemon())
+        def __init__(self, port=8000, as_daemon=True):
+            self.server = StoppableServer()
             self.port = port
 
             super(StoppableServerThread, self).__init__(
-                target=self.server.serve_forever, daemon=True
+                target=self.server.serve_forever, daemon=as_daemon
             )
 
         def stop(self):
@@ -231,8 +244,13 @@ def main():
     except OSError:
         raise OSError(f"Another server is already listening on port {port}")
 
+    def shutdown():
+        server.server_close()
+        sys.exit(0)
+
     server.register_introspection_functions()
     server.register_instance(CtlDaemon())
+    server.register_function(shutdown)
     print(f"Listening on localhost port {port}")
     try:
         server.serve_forever()
