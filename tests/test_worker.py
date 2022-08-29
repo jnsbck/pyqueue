@@ -6,3 +6,11 @@
 #     server = CtlDaemon()
 #     server.update_worker_status(pid, {"status": "running"})
 #     assert server.workers[pid]["status"] == "runnning"
+
+
+
+# test worker kill job
+# test worker handling failed job
+# test worker daemon interactions (receive kill signal, receive jobs)
+# test worker handling interuptions in the job or of the worker
+# test worker handling interuptions of daemon

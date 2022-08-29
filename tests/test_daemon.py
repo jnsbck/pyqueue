@@ -6,6 +6,7 @@ import time
 import xmlrpc.client
 
 import pytest
+from pyqueue import worker
 
 from pyqueue.daemon import CtlDaemon, StoppableServerThread
 from pyqueue.utils import try_pickle, try_unpickle
@@ -111,3 +112,9 @@ def test_server_client_interaction(test):
     time.sleep(
         0.5
     )  # for some reason without this OSError: [Errno 98] (Address already in use) is raised
+
+
+# def test_server_worker_interaction():
+#     test kill worker
+#     test status checks worker
+#     test registering and unregistering worker
