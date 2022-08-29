@@ -64,7 +64,6 @@ class Worker:
                 newpid = os.fork()
                 if newpid == 0:
                     job.run()
-                    # TODO: HERE wait for scancel signal or job to finish
                     os._exit(0)
                 else:
                     job.pid = newpid
@@ -83,8 +82,17 @@ class Worker:
                     )
                 time.sleep(0.5)
 
-                # wait for child process to finish
                 while self.queue_server.check_alive(job.id):
+                    # TODO: HERE wait for scancel signal or job to finish
+                    # job.kill()
+                    # while self.queue_server.check_alive(job.id):
+                    # check finished
+                    # if exit 0 -> finished
+                    # if exit 1 -> failed
+                    # check scancel
+                    # if scancel job.kill() 
+
+
                     pid = self.queue_server.get_job_pid(job.id)
                     if pid != None:
                         os.waitpid(pid, 0)
@@ -94,17 +102,17 @@ class Worker:
                     self.queue_server.update_job_status(
                         job.id,
                         {
-                            "exit": 1,
+                            "exit": 0,
                             "status": "finished",
                             "_end_time": datetime.datetime.now(),
                         },
                     )  # reset ppid/pid ?
 
                     # try:
-                    #     self.queue_server.update_job_status(job.id, {"exit": 1, "status": "finished"})
+                    #     self.queue_server.update_job_status(job.id, {"exit": 0, "status": "finished"})
                     #     job.run()
                     # except:
-                    #     self.queue_server.update_job_status(job.id, {"exit": 0, "status": "failed"})
+                    #     self.queue_server.update_job_status(job.id, {"exit": 1, "status": "failed"})
 
                 self.update_worker_status(None, "idle")
             else:
