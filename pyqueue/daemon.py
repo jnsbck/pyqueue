@@ -154,7 +154,7 @@ class CtlDaemon:
     def acquire_job(self):
         job = self.queue.next_job()
         job.status = "submitted"
-        log.info(f"submitted job [ID{job.id}]")
+        log.info(f"submitted job [ID:{job.id}]")
         return job
 
     def update_job_status(self, job_id, kwargs):
@@ -164,7 +164,7 @@ class CtlDaemon:
                 job.__dict__[key] = fix_datetime(val)
             else:
                 job.__dict__[key] = val
-        log.info(f"Updated {list(kwargs.keys())} for job [ID {job_id}]")
+        log.info(f"Updated {list(kwargs.keys())} for job [ID:{job_id}]")
 
     def update_worker_status(self, pid, kwargs):
         for key, val in kwargs.items():
@@ -172,14 +172,14 @@ class CtlDaemon:
                 self.workers[pid][key] = fix_datetime(val)
             else:
                 self.workers[pid][key] = val
-        log.info(f"Updated {list(kwargs.keys())} for worker [PID: {pid}]")
+        log.info(f"Updated {list(kwargs.keys())} for worker [PID:{pid}]")
 
     @check_pickle  # pickle & unpickle so it can be sent or received.
     def submit_job(self, job: Job or str):
         job = try_unpickle(job)
         assert isinstance(job, Job)
         self.queue.append(job)
-        log.info(f"Added job [ID {job.id}] to the queue")
+        log.info(f"Added job [ID:{job.id}] to the queue")
 
     def check_alive(self, id):
         job = self.queue.get_dict()[id]
@@ -206,7 +206,7 @@ class CtlDaemon:
         job = BashJob(cmd)
         job.owner = kwargs["owner"] if "owner" in kwargs else None
         self.submit_job(job)
-        log.info(f"Submitted batch job [ID {job.id}] to queue")
+        log.info(f"Submitted batch job [ID:{job.id}] to queue")
         # if len(queue) > 1, and no active, worker -> register new worker
 
     def squeue(self, user_name, filter={"me": False}):
@@ -262,6 +262,10 @@ class CtlDaemon:
     def register_worker(self, pid, kwargs):
         self.workers.update({pid: kwargs})
         log.info(f"Worker process [PID {pid}] was registered with pyqueue.")
+    
+    def deregister_worker(self, pid):
+        self.workers.pop(pid)
+        log.info(f"Worker process [PID {pid}] was deregistered with pyqueue.")
 
     def kill_worker(self, pid):
         # # remove worker from self.workers
@@ -269,7 +273,7 @@ class CtlDaemon:
         # send interupt signal to pid of worker process
         p = psutil.Process(pid)
         p.terminate()  # or p.kill()
-        log.info(f"Worker process [PID {pid}] was killed.")
+        log.info(f"Worker process [PID:{pid}] was killed.")
 
 
 def main():

@@ -12,7 +12,7 @@ from pyqueue.jobs import Job
 
 
 def get_logger(name, log_level=logging.INFO, console_level=logging.WARNING):
-    logger = logging.getLogger(name)
+    logger = logging.getLogger(name.upper())
     logger.setLevel(log_level)
 
     console_handler = logging.StreamHandler()

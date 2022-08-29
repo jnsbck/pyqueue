@@ -4,6 +4,7 @@
 import datetime
 import logging
 import os
+from signal import signal
 import time
 import xmlrpc.client
 
@@ -63,7 +64,7 @@ class Worker:
                 newpid = os.fork()
                 if newpid == 0:
                     job.run()
-                    # TODO: HERE wait for kill signal
+                    # TODO: HERE wait for scancel signal or job to finish
                     os._exit(0)
                 else:
                     job.pid = newpid
@@ -78,7 +79,7 @@ class Worker:
                         },
                     )
                     log.info(
-                        f"Submitted jobID:[{job.id}] PID:[{job.pid}] CMD:[{job.cmd}]."
+                        f"Submitted job [ID:{job.id}] [PID:{job.pid}] [CMD:{job.cmd}]."
                     )
                 time.sleep(0.5)
 
@@ -112,13 +113,12 @@ class Worker:
                 time.sleep(5)
 
             if self.idletime()["minutes"] > 1:
-                # if queue empty for several minutes -> kill worker
-                # deregister worker
-                break
+                self.queue_server.deregister_worker(self.pid)
+                break # shut down worker
         log.info("Worker was shut down due to inactivity.")
 
     def kill(self):
-        pass
+        os.kill(self.pid, signal.SIGTERM)
 
 
 if __name__ == "__main__":
