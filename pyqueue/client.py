@@ -8,8 +8,10 @@ import os
 import sys
 import xmlrpc.client
 
+import psutil
+
 from pyqueue.daemon import StoppableServer
-from pyqueue.utils import get_logger, is_up, wait_until
+from pyqueue.utils import catch_connection_refused, get_logger, is_up, wait_until
 from pyqueue.worker import Worker
 
 log = get_logger("CLIENT")
@@ -203,9 +205,7 @@ class QueueClient(object):
         if args.service is None and not (args.worker or args.daemon):
             parser.print_help()
         if "daemon" == args.service or args.daemon:
-            try:
-                self.server.sinfo()
-            except ConnectionRefusedError:
+            if not is_up(self.server):
                 daemon = StoppableServer()
                 pid = os.fork()
                 if pid > 0:
@@ -283,6 +283,10 @@ class QueueClient(object):
             help="stop all running workers and daemons",
         )
 
+        def try_daemon_shutdown():
+            if catch_connection_refused(self.server.shutdown):
+                print("Shutting down pyqueue daemon. This can take a few seconds.")
+
         args = parser.parse_args(sys.argv[2:])
         if args.service is None and not (args.all or args.worker or args.daemon):
             parser.print_help()
@@ -291,15 +295,9 @@ class QueueClient(object):
                 num_pending = self.server.get_num_pending_jobs()
                 num_running = self.server.get_num_running_jobs()
                 if num_pending == 0 and num_running == 0:
-                    try:
-                        self.server.shutdown()
-                    except ConnectionRefusedError:
-                        pass  # Catches error caused by sigterm in shutdown
+                    try_daemon_shutdown()
                 elif args.force:
-                    try:
-                        self.server.shutdown()
-                    except ConnectionRefusedError:
-                        pass  # Catches error caused by sigterm in shutdown
+                    try_daemon_shutdown()
                 else:
                     print(
                         f"There are still {num_running} running and {num_pending} pending jobs. To stop the service use --force."
@@ -313,9 +311,24 @@ class QueueClient(object):
                 print("No daemon seems to be active.")
 
         if "worker" == args.service or args.worker or args.all:
-            # TODO: stop worker
-            # TODO: check if worker is active then needs --force
-            print("DUMMY OUTPUT: worker X was stopped successfully")
+            try:
+                if self.server.is_worker(args.id):
+                    if not self.server.check_busy(args.id):
+                        self.server.kill_worker(args.id)
+                    elif args.force:
+                        self.server.kill_worker(args.id)
+                    else:
+                        print(
+                            f"The worker you are trying to kill is still listed as busy. To stop the service use --force."
+                        )
+                    if wait_until(lambda: not psutil.pid_exists(args.id), timeout=1):
+                        print("The worker was successfully killed.")
+                    else:
+                        print("The worker could not be killed.")
+                else:
+                    print(f"There is currently no worker with pid {args.pid}")
+            except ConnectionRefusedError:
+                print("No daemon seems to be active.")
         if (
             args.service not in ["daemon", "worker"]
             and not args.worker

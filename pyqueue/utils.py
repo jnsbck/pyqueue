@@ -39,12 +39,16 @@ def wait_until(somepredicate, timeout=5, period=0.25, *args, **kwargs):
     return False
 
 
-def is_up(server):
+def catch_connection_refused(run, run_args=(), run_kwargs={}):
     try:
-        server.sinfo()
+        run(*run_args, **run_kwargs)
         return True
     except ConnectionRefusedError:
         return False
+
+
+def is_up(server):
+    return catch_connection_refused(server.sinfo)
 
 
 def fix_datetime(xmlrpc_datetime):

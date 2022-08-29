@@ -185,11 +185,18 @@ class CtlDaemon:
         job = self.queue.get_dict()[id]
         return job.check_alive()
 
+    def check_busy(self, pid):
+        worker = self.workers[pid]
+        return worker["status"] == "busy"
+
+    def is_worker(self, pid):
+        return pid in self.workers
+
     def get_job_pid(self, id):
         return self.queue.get_dict()[id].pid
 
     def remove_killed_workers(self):
-        tracked_workers = self.workers
+        tracked_workers = self.workers.copy()
         for pid in tracked_workers:
             None if psutil.pid_exists(pid) else self.workers.pop(pid)
         log.info("Removed dead workers from tracking")

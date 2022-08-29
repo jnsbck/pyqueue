@@ -10,6 +10,7 @@ from pyqueue.helpers import (  # NEEDS REFACTOR! this module only exists to avoi
 )
 from pyqueue.jobs import BashJob, Job
 from pyqueue.utils import (
+    catch_connection_refused,
     check_pickle,
     fix_datetime,
     get_logger,
