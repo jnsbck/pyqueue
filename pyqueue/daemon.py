@@ -92,9 +92,7 @@ class StoppableServer(SimpleXMLRPCServer):
             sys.exit()
 
         try:
-            super().__init__(
-                ("localhost", port), allow_none=True, logRequests=False
-            )
+            super().__init__(("localhost", port), allow_none=True, logRequests=False)
         except OSError:
             raise OSError(f"Another server is already listening on port {port}")
         self.register_introspection_functions()
