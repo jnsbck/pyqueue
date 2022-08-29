@@ -1,6 +1,6 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![pyqueue version](https://img.shields.io/badge/version-v0.01-green.svg)](https://github.com/jnsbck/pyqueue)
-![Build Status](https://github.com/JbeckUniTb/unittest_workshop/actions/workflows/tests.yml/badge.svg)
+[![Tests](https://github.com/jnsbck/pyqueue/workflows/Tests/badge.svg?branch=main)](https://github.com/jnsbck/pyqueue/actions)
 
 # pyqueue
 
