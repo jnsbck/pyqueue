@@ -74,7 +74,7 @@ Any of the 4 componenents can be extendend and worked on relatively independentl
 ### Server
 #### Important
 - [x] Only allow one server to run at a time!
-- [ ] ==NEXT== make sbatch work nicely
+- [x] make sbatch work nicely
 - [-] make scancel work
 - [x] Send and receive jobs as pickle, rather than dict
 
