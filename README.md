@@ -1,13 +1,39 @@
+# pyqueue
+
 Simple slurm like Job queue written in python.
 
-Consists of Control Daemon that collects and distributes jobs. Keeps track of worker and job status.
+Consists of Control Daemon that collects and distributes jobs. Keeps track of workers and job status.
 
-Supports sbatch, squeue, scancel, sinfo
+Supports sbatch, squeue, sinfo and (not yet) scancel.
 
 
+## Install
+1. Clone the repo
+2. `cd pyqueue`
+3. `python3 setup.py .`
+
+To test if the installation was successful, type `pyqueue`
+
+## Getting started
+To use pyqueue, start the queue daemon with `pyqueue start daemon`. You can check if the deamon is running with `pyqueue sinfo`.
+
+Now the daemon is ready to accept jobs, which you can submit with `sbatch`, i.e. `pyqueue sbatch Hello World!` and monitor with `pyqueue squeue`. All of the jobs that are submitted to the daemon get collected and distributed among the worker processes that the daemon manages. To spin up a worker, you can run `pyqueue start worker`. You can check the status of the worker by calling `pyqueue sinfo`. The outputs for each job are stored in `./outputs/`.
+
+## Structure
+To keep pyqueue somewhat modular, it is split into:
+- `daemon.py`, queue server
+- `client.py`, client
+- `worker.py`, worker processes
+- `jobs.py`, job specifications
+
+Any of the 4 componenents can be extendend and worked on relatively independently of the remaining parts. Other Job types can be added as long as they inherit from `Job`.
+
+---
+---
+## To Dos:
 ### General
 #### Important
-- [ ] ==NEXT== Add logging (server / CtlDaemon and workers)
+- [x] Add logging (server / CtlDaemon and workers)
 - [ ] Add error handling and exceptions for jobs (also Keyboard Interrupt of server / worker)
 
 #### Nice to have
@@ -24,7 +50,7 @@ Supports sbatch, squeue, scancel, sinfo
     - [x] add setup.py
     - [ ] test setup.py in VM
 - [x] License
-- [ ] System config file?
+- [ ] System config file? (log_dir, output_dir, port, daemon address)
 
 ---
 ### Client
@@ -62,7 +88,7 @@ Supports sbatch, squeue, scancel, sinfo
 ### Worker
 #### Important
 - [ ] Worker is somewhat of a mess that needs fixing
-- [ ] ==NEXT== Add Worker I/O (output/error logs)
+- [x] Add Worker I/O (output/error logs)
 - [x] add process logs with <pid>.err and <pid>.out
 - [x] Add Worker
 
@@ -72,31 +98,9 @@ Supports sbatch, squeue, scancel, sinfo
 - [ ] Add shutdown function at the end (orderly shutdown)
 - [ ] Add option to rerun failed jobs (x times, at the end, requeue them...)
 
-
+---
 ### Jobs
 #### Important
 
 #### Nice to have
 - [ ] DockerJob
-
-
-
-Workflow Idea
-
-<!-- 
-# ssh cin-hn
-# python3 daemon.py &
-# exit
-
-# ssh gber3
-# python3 client.py register_worker
-# python3 client.py sbatch job1.sh
-# python3 client.py sbatch job2.sh
-# python3 client.py sbatch job3.sh
-# exit
-
-# ssh ber1
-# python3 client.py register_worker
-# python3 client.py sbatch job1.sh
-# exit
- -->
