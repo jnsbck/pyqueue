@@ -9,9 +9,10 @@ import sys
 import xmlrpc.client
 
 from pyqueue.daemon import StoppableServer
-from pyqueue.utils import is_up, wait_until
+from pyqueue.utils import is_up, wait_until, get_logger
 from pyqueue.worker import Worker
 
+log = get_logger("CLIENT")
 
 class QueueClient(object):
     def __init__(self, server):
@@ -97,7 +98,7 @@ class QueueClient(object):
 
         _, user_name, _ = self.get_client_info()
 
-        print(self.server.squeue(user=user_name, flags=args.__dict__))
+        print(self.server.squeue(user_name, args.__dict__))
 
     def register_worker(self):
         parser = argparse.ArgumentParser(
@@ -115,7 +116,7 @@ class QueueClient(object):
 
         # show some of the client info
         print(
-            "date-time: {0}\nlogged in as user: {1}\ncurrent client pid: {2}\n".format(
+            "date-time: {1}\nlogged in as user: {0}\ncurrent client pid: {2}\n".format(
                 *self.get_client_info()
             )
         )
@@ -183,10 +184,24 @@ class QueueClient(object):
         #     type=int,
         #     help="specify the port the daemon is listening on",
         # )
+        parser.add_argument(
+            "-w",
+            "--worker",
+            action="store_true",
+            default=False,
+            help="quick start worker with flag argument",
+        )
+        parser.add_argument(
+            "-d",
+            "--daemon",
+            action="store_true",
+            default=False,
+            help="quick start daemon with flag argument",
+        )
         args = parser.parse_args(sys.argv[2:])
-        if args.service is None:
+        if args.service is None and not (args.worker or args.daemon):
             parser.print_help()
-        elif "daemon" == args.service:
+        if "daemon" == args.service or args.daemon:
             try:
                 self.server.sinfo()
             except ConnectionRefusedError:
@@ -199,9 +214,8 @@ class QueueClient(object):
                         raise ConnectionRefusedError(f"Could not connect to daemon.")
                 else:
                     daemon.serve_forever()
-                sys.exit(0)
 
-        elif "worker" in args.service.lower():
+        if "worker" == args.service or args.worker:
             if is_up(self.server):
                 pid = os.fork()
                 if pid > 0:
@@ -209,15 +223,15 @@ class QueueClient(object):
                 else:
                     worker = Worker()
                     worker.register_with_queue_server(self.server)
+                    print(f"Spawning a worker process with pid: {worker.pid}")
                     worker.start()
-                    print(f"Spawned a worker process with pid: {worker.pid}")
-                sys.exit(0)
             else:
                 print("No Daemon running.")
-        else:
+        if args.service not in ["daemon", "worker"] and not args.worker and not args.daemon:
             print(
                 f"{args.service} is not a valid service, select one of [daemon, worker]"
             )
+        sys.exit(0)
 
     def stop(self):
         parser = argparse.ArgumentParser(
@@ -242,11 +256,32 @@ class QueueClient(object):
             type=int,
             help="process id of the worker in question.",
         )
+        parser.add_argument(
+            "-w",
+            "--worker",
+            action="store_true",
+            default=False,
+            help="quick stop worker with flag argument",
+        )
+        parser.add_argument(
+            "-d",
+            "--daemon",
+            action="store_true",
+            default=False,
+            help="quick stop daemon with flag argument",
+        )
+        parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            default=False,
+            help="stop all running workers and daemons",
+        )
 
         args = parser.parse_args(sys.argv[2:])
-        if args.service is None:
+        if args.service is None and not (args.all or args.worker or args.daemon):
             parser.print_help()
-        elif "daemon" in args.service.lower():
+        if "daemon" == args.service or args.daemon or args.all:
             try:
                 num_pending = self.server.get_num_pending_jobs()
                 num_running = self.server.get_num_running_jobs()
@@ -272,11 +307,11 @@ class QueueClient(object):
             except ConnectionRefusedError:
                 print("No daemon seems to be active.")
 
-        elif "worker" in args.service.lower():
+        if "worker" == args.service or args.worker or args.all:
             # TODO: stop worker
             # TODO: check if worker is active then needs --force
             print("DUMMY OUTPUT: worker X was stopped successfully")
-        else:
+        if args.service not in ["daemon", "worker"] and not args.worker and not args.daemon and not args.all:
             print(
                 f"{args.service} is not a valid service, select one of [daemon, worker]"
             )

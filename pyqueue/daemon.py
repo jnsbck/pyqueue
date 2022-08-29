@@ -10,8 +10,9 @@ from xmlrpc.server import SimpleXMLRPCServer
 
 from pyqueue.helpers import dt2dict, timedeltastr
 from pyqueue.jobs import *
-from pyqueue.utils import check_pickle, fix_datetime, try_unpickle
+from pyqueue.utils import check_pickle, fix_datetime, try_unpickle, get_logger
 
+log = get_logger("DAEMON")
 
 class Queue:
     def __init__(self, jobs: List[Job] = None):
@@ -87,7 +88,7 @@ class StoppableServer:
             if kill_thread:
                 os.kill(os.getpid(), signal.SIGTERM)
 
-        self.server = SimpleXMLRPCServer(("localhost", port), allow_none=True)
+        self.server = SimpleXMLRPCServer(("localhost", port), allow_none=True, logRequests=False)
         self.server.register_introspection_functions()
         self.server.register_instance(CtlDaemon())
         self.server.register_function(shutdown)
@@ -149,6 +150,7 @@ class CtlDaemon:
     def acquire_job(self):
         job = self.queue.next_job()
         job.status = "submitted"
+        log.info(f"submitted job [ID{job.id}]")
         return job
 
     def update_job_status(self, job_id, kwargs):
@@ -158,6 +160,7 @@ class CtlDaemon:
                 job.__dict__[key] = fix_datetime(val)
             else:
                 job.__dict__[key] = val
+        log.info(f"Updated {list(kwargs.keys())} for job [ID {job_id}]")
 
     def update_worker_status(self, pid, kwargs):
         for key, val in kwargs.items():
@@ -165,12 +168,14 @@ class CtlDaemon:
                 self.workers[pid][key] = fix_datetime(val)
             else:
                 self.workers[pid][key] = val
+        log.info(f"Updated {list(kwargs.keys())} for worker [PID: {pid}]")
 
     @check_pickle  # pickle & unpickle so it can be sent or received.
     def submit_job(self, job: Job or str):
         job = try_unpickle(job)
         assert isinstance(job, Job)
         self.queue.append(job)
+        log.info(f"Added job [ID {job.id}] to the queue")
 
     def check_alive(self, id):
         job = self.queue.get_dict()[id]
@@ -183,12 +188,14 @@ class CtlDaemon:
         tracked_workers = self.workers
         for pid in tracked_workers:
             None if psutil.pid_exists(pid) else self.workers.pop(pid)
+        log.info("Removed dead workers from tracking")
 
     # ------------------ CLIENT FUNCTIONALITY -------------------
     def sbatch(self, cmd, kwargs):
         job = BashJob(cmd)
         job.owner = kwargs["owner"] if "owner" in kwargs else None
         self.submit_job(job)
+        log.info(f"Submitted batch job [ID {job.id}] to queue")
         # if len(queue) > 1, and no active, worker -> register new worker
 
     def squeue(self, user_name, filter={"me": False}):
@@ -243,6 +250,7 @@ class CtlDaemon:
 
     def register_worker(self, pid, kwargs):
         self.workers.update({pid: kwargs})
+        log.info(f"Worker process [PID {pid}] was registered with pyqueue.")
 
     def kill_worker(self, pid):
         # # remove worker from self.workers
@@ -250,12 +258,13 @@ class CtlDaemon:
         # send interupt signal to pid of worker process
         p = psutil.Process(pid)
         p.terminate()  # or p.kill()
+        log.info(f"Worker process [PID {pid}] was killed.")
 
 
 def main():
     try:
         port = 8000
-        server = SimpleXMLRPCServer(("localhost", port), allow_none=True)
+        server = SimpleXMLRPCServer(("localhost", port), allow_none=True, logRequests=False)
     except OSError:
         raise OSError(f"Another server is already listening on port {port}")
 
@@ -266,11 +275,11 @@ def main():
     server.register_introspection_functions()
     server.register_instance(CtlDaemon())
     server.register_function(shutdown)
-    print(f"Listening on localhost port {port}")
+    log.info(f"Listening on localhost port {port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nKeyboard interrupt received, exiting.")
+        log.critical("\nKeyboard interrupt received, exiting.")
         server.server_close()
         sys.exit(0)
 

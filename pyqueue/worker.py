@@ -8,8 +8,9 @@ import xmlrpc.client
 
 from pyqueue.helpers import timedelta2dict
 from pyqueue.jobs import *
-from pyqueue.utils import try_unpickle
+from pyqueue.utils import try_unpickle, get_logger
 
+log = get_logger("WORKER")
 
 class Worker:
     def __init__(self, queue_server=None):
@@ -47,7 +48,7 @@ class Worker:
             self._tidle = datetime.datetime.now()
 
     def start(self):
-        print("Starting worker")
+        log.info("Starting worker")
         assert self.queue_server != None, "No queue sever was registered."
         self.update_worker_status(None, "idle")
 
@@ -74,7 +75,7 @@ class Worker:
                             "_start_time": datetime.datetime.now(),
                         },
                     )
-                    print(
+                    log.info(
                         f"Submitted jobID:[{job.id}] PID:[{job.pid}] CMD:[{job.cmd}]."
                     )
                 time.sleep(0.5)
@@ -105,14 +106,14 @@ class Worker:
                 self.update_worker_status(None, "idle")
             else:
                 if self.idletime()["seconds"] < 5:
-                    print("Worker is currently idle and accepting jobs")
+                    log.info("Worker is currently idle and accepting jobs")
                 time.sleep(5)
 
             if self.idletime()["minutes"] > 1:
                 # if queue empty for several minutes -> kill worker
                 # deregister worker
                 break
-        print("Worker was shut down due to inactivity.")
+        log.info("Worker was shut down due to inactivity.")
 
     def kill(self):
         pass

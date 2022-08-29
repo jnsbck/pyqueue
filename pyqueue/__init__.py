@@ -14,5 +14,6 @@ from pyqueue.utils import (
     try_pickle,
     try_unpickle,
     wait_until,
+    get_logger,
 )
 from pyqueue.worker import Worker

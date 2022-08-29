@@ -6,8 +6,24 @@ import datetime
 import pickle
 import time
 from collections.abc import Iterable
+import logging
 
 from pyqueue.jobs import Job
+
+
+def get_logger(name):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
+
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.WARNING)
+
+    formatter = logging.basicConfig(format='%(levelname)s|%(name)s: %(asctime)s - %(message)s', filename='pyqueue.log', datefmt="%d.%m.%Y, %H:%M:%S")
+    console_handler.setFormatter(formatter)
+
+    logger.addHandler(console_handler)
+    
+    return logger
 
 
 def wait_until(somepredicate, timeout=5, period=0.25, *args, **kwargs):
