@@ -19,7 +19,7 @@ setup(
     packages=find_packages("pyqueue"),
     package_dir = {"": "pyqueue"},
     zip_safe=False,
-    install_requires=["psutil"],
+    install_requires=["psutil", "black", "isort"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
