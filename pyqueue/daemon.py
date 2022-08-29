@@ -84,6 +84,11 @@ class Queue:
 
 class StoppableServer(SimpleXMLRPCServer):
     def __init__(self, port=8000):
+        try:
+            super().__init__(("localhost", port), allow_none=True, logRequests=False)
+        except OSError:
+            raise OSError(f"Another server is already listening on port {port}")
+
         def shutdown(kill_thread=True):
             self.server.server_close()
             # sys.exit() produces error and leaves thread running, hence kill option
@@ -91,11 +96,6 @@ class StoppableServer(SimpleXMLRPCServer):
                 os.kill(os.getpid(), signal.SIGTERM)
             sys.exit()
 
-        try:
-            super().__init__(("localhost", port), allow_none=True, logRequests=False)
-        except OSError:
-            raise OSError(f"Another server is already listening on port {port}")
-        self.register_introspection_functions()
         self.register_instance(CtlDaemon())
         self.register_function(shutdown)
 
