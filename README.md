@@ -1,3 +1,6 @@
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![pyqueue version](https://img.shields.io/badge/version-v0.01-green.svg)](https://github.com/jnsbck/pyqueue)
+
 # pyqueue
 
 Simple slurm like Job queue written in python.
