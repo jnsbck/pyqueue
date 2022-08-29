@@ -50,9 +50,9 @@ Any of the 4 componenents can be extendend and worked on relatively independentl
 - [x] Add users
 - [x] Add priorities
 - [ ] Add timing of jobs
-- [ ] setup.py
+- [x] setup.py
     - [x] add setup.py
-    - [ ] test setup.py in VM
+    - [x] test setup.py in VM
 - [x] License
 - [ ] System config file? (log_dir, output_dir, port, daemon address)
 
