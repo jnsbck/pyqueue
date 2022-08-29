@@ -86,13 +86,17 @@ class StoppableServer:
     def __init__(self, port=8000):
         def shutdown(kill_thread=True):
             self.server.server_close()
-            # sys.exit() produces error and leaces thread running therefore its killed
+            # sys.exit() produces error and leaves thread running, hence kill option
             if kill_thread:
                 os.kill(os.getpid(), signal.SIGTERM)
+            sys.exit()
 
-        self.server = SimpleXMLRPCServer(
-            ("localhost", port), allow_none=True, logRequests=False
-        )
+        try:
+            self.server = SimpleXMLRPCServer(
+                ("localhost", port), allow_none=True, logRequests=False
+            )
+        except OSError:
+            raise OSError(f"Another server is already listening on port {port}")
         self.server.register_introspection_functions()
         self.server.register_instance(CtlDaemon())
         self.server.register_function(shutdown)
@@ -277,21 +281,8 @@ class CtlDaemon:
 
 
 def main():
-    try:
-        port = 8000
-        server = SimpleXMLRPCServer(
-            ("localhost", port), allow_none=True, logRequests=False
-        )
-    except OSError:
-        raise OSError(f"Another server is already listening on port {port}")
-
-    def shutdown():
-        server.server_close()
-        sys.exit(0)
-
-    server.register_introspection_functions()
-    server.register_instance(CtlDaemon())
-    server.register_function(shutdown)
+    port = 8000
+    server = StoppableServer()
     log.info(f"Listening on localhost port {port}")
     try:
         server.serve_forever()
