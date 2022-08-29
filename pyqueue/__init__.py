@@ -3,17 +3,18 @@
 
 from pyqueue.client import QueueClient
 from pyqueue.daemon import CtlDaemon, Queue, StoppableServer, StoppableServerThread
-from pyqueue.helpers import (
+from pyqueue.helpers import (  # NEEDS REFACTOR! this module only exists to avoid cyclic imports with jobs.py and utils.py
     dt2dict,
-)  # NEEDS REFACTOR! this module only exists to avoid cyclic imports with jobs.py and utils.py
-from pyqueue.helpers import timedelta2dict, timedeltastr
+    timedelta2dict,
+    timedeltastr,
+)
 from pyqueue.jobs import BashJob, Job
 from pyqueue.utils import (
     check_pickle,
     fix_datetime,
+    get_logger,
     try_pickle,
     try_unpickle,
     wait_until,
-    get_logger,
 )
 from pyqueue.worker import Worker

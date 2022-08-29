@@ -3,26 +3,30 @@
 
 import codecs
 import datetime
+import logging
 import pickle
 import time
 from collections.abc import Iterable
-import logging
 
 from pyqueue.jobs import Job
 
 
-def get_logger(name):
+def get_logger(name, log_level=logging.INFO, console_level=logging.WARNING):
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(log_level)
 
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.WARNING)
+    console_handler.setLevel(console_level)
 
-    formatter = logging.basicConfig(format='%(levelname)s|%(name)s: %(asctime)s - %(message)s', filename='pyqueue.log', datefmt="%d.%m.%Y, %H:%M:%S")
+    formatter = logging.basicConfig(
+        format="%(levelname)s|%(name)s: %(asctime)s - %(message)s",
+        filename="pyqueue.log",
+        datefmt="%d.%m.%Y, %H:%M:%S",
+    )
     console_handler.setFormatter(formatter)
 
     logger.addHandler(console_handler)
-    
+
     return logger
 
 

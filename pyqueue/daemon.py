@@ -1,6 +1,7 @@
 # This file is part of pyqueue, a simple slurm like job queue written in python. pyqueue is licensed
 # under the GNU General Public License v3, see <https://www.gnu.org/licenses/>. Copyright 2022 Jonas Beck
 
+import logging
 import signal
 import sys
 import threading
@@ -10,9 +11,10 @@ from xmlrpc.server import SimpleXMLRPCServer
 
 from pyqueue.helpers import dt2dict, timedeltastr
 from pyqueue.jobs import *
-from pyqueue.utils import check_pickle, fix_datetime, try_unpickle, get_logger
+from pyqueue.utils import check_pickle, fix_datetime, get_logger, try_unpickle
 
 log = get_logger("DAEMON")
+
 
 class Queue:
     def __init__(self, jobs: List[Job] = None):
@@ -88,7 +90,9 @@ class StoppableServer:
             if kill_thread:
                 os.kill(os.getpid(), signal.SIGTERM)
 
-        self.server = SimpleXMLRPCServer(("localhost", port), allow_none=True, logRequests=False)
+        self.server = SimpleXMLRPCServer(
+            ("localhost", port), allow_none=True, logRequests=False
+        )
         self.server.register_introspection_functions()
         self.server.register_instance(CtlDaemon())
         self.server.register_function(shutdown)
@@ -264,7 +268,9 @@ class CtlDaemon:
 def main():
     try:
         port = 8000
-        server = SimpleXMLRPCServer(("localhost", port), allow_none=True, logRequests=False)
+        server = SimpleXMLRPCServer(
+            ("localhost", port), allow_none=True, logRequests=False
+        )
     except OSError:
         raise OSError(f"Another server is already listening on port {port}")
 
@@ -285,4 +291,7 @@ def main():
 
 
 if __name__ == "__main__":
+    log = get_logger(
+        "DAEMON", log_level=logging.INFO
+    )  # lower console logging level, if started as main
     main()

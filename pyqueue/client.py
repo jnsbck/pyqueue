@@ -9,16 +9,17 @@ import sys
 import xmlrpc.client
 
 from pyqueue.daemon import StoppableServer
-from pyqueue.utils import is_up, wait_until, get_logger
+from pyqueue.utils import get_logger, is_up, wait_until
 from pyqueue.worker import Worker
 
 log = get_logger("CLIENT")
+
 
 class QueueClient(object):
     def __init__(self, server):
         parser = argparse.ArgumentParser(
             description="Client to interact with the job queue server.",
-            usage="""queue-client <command> [<args>]
+            usage="""pyqueue <command> [<args>]
         
         sinfo: Show current system and queue status.
         squeue: Show submitted jobs.
@@ -45,8 +46,8 @@ class QueueClient(object):
         args = parser.parse_args(sys.argv[1:2])
         if args.command is None:
             if args.version:
-                print("v0.0.1")
-                exit(1)
+                print("pyqueue, v0.0.1")
+                exit(0)
             else:
                 print("No inputs were provided")
                 parser.print_help()
@@ -227,7 +228,11 @@ class QueueClient(object):
                     worker.start()
             else:
                 print("No Daemon running.")
-        if args.service not in ["daemon", "worker"] and not args.worker and not args.daemon:
+        if (
+            args.service not in ["daemon", "worker"]
+            and not args.worker
+            and not args.daemon
+        ):
             print(
                 f"{args.service} is not a valid service, select one of [daemon, worker]"
             )
@@ -311,7 +316,12 @@ class QueueClient(object):
             # TODO: stop worker
             # TODO: check if worker is active then needs --force
             print("DUMMY OUTPUT: worker X was stopped successfully")
-        if args.service not in ["daemon", "worker"] and not args.worker and not args.daemon and not args.all:
+        if (
+            args.service not in ["daemon", "worker"]
+            and not args.worker
+            and not args.daemon
+            and not args.all
+        ):
             print(
                 f"{args.service} is not a valid service, select one of [daemon, worker]"
             )

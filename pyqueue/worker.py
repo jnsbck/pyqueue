@@ -2,15 +2,17 @@
 # under the GNU General Public License v3, see <https://www.gnu.org/licenses/>. Copyright 2022 Jonas Beck
 
 import datetime
+import logging
 import os
 import time
 import xmlrpc.client
 
 from pyqueue.helpers import timedelta2dict
 from pyqueue.jobs import *
-from pyqueue.utils import try_unpickle, get_logger
+from pyqueue.utils import get_logger, try_unpickle
 
 log = get_logger("WORKER")
+
 
 class Worker:
     def __init__(self, queue_server=None):
@@ -120,8 +122,8 @@ class Worker:
 
 
 if __name__ == "__main__":
+    log = get_logger("WORKER", console_level=logging.INFO)
 
-    # init logger
     queue_server = xmlrpc.client.ServerProxy("http://localhost:8000", allow_none=True)
     worker = Worker()
     worker.register_with_queue_server(queue_server)
