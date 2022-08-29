@@ -90,8 +90,7 @@ class Worker:
                     # if exit 0 -> finished
                     # if exit 1 -> failed
                     # check scancel
-                    # if scancel job.kill() 
-
+                    # if scancel job.kill()
 
                     pid = self.queue_server.get_job_pid(job.id)
                     if pid != None:
@@ -122,7 +121,7 @@ class Worker:
 
             if self.idletime()["minutes"] > 1:
                 self.queue_server.deregister_worker(self.pid)
-                break # shut down worker
+                break  # shut down worker
         log.info("Worker was shut down due to inactivity.")
 
     def kill(self):

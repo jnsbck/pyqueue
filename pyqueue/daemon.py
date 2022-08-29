@@ -266,7 +266,7 @@ class CtlDaemon:
     def register_worker(self, pid, kwargs):
         self.workers.update({pid: kwargs})
         log.info(f"Worker process [PID {pid}] was registered with pyqueue.")
-    
+
     def deregister_worker(self, pid):
         self.workers.pop(pid)
         log.info(f"Worker process [PID {pid}] was deregistered with pyqueue.")

@@ -8,7 +8,6 @@
 #     assert server.workers[pid]["status"] == "runnning"
 
 
-
 # test worker kill job
 # test worker handling failed job
 # test worker daemon interactions (receive kill signal, receive jobs)
