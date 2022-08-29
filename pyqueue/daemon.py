@@ -82,7 +82,7 @@ class Queue:
         return "\n".join([f"{i}; " + job.__str__() for i, job in enumerate(jobs)])
 
 
-class StoppableServer:
+class StoppableServer(SimpleXMLRPCServer):
     def __init__(self, port=8000):
         def shutdown(kill_thread=True):
             self.server.server_close()
@@ -92,17 +92,14 @@ class StoppableServer:
             sys.exit()
 
         try:
-            self.server = SimpleXMLRPCServer(
+            super().__init__(
                 ("localhost", port), allow_none=True, logRequests=False
             )
         except OSError:
             raise OSError(f"Another server is already listening on port {port}")
-        self.server.register_introspection_functions()
-        self.server.register_instance(CtlDaemon())
-        self.server.register_function(shutdown)
-
-    def serve_forever(self):
-        return self.server.serve_forever()
+        self.register_introspection_functions()
+        self.register_instance(CtlDaemon())
+        self.register_function(shutdown)
 
 
 class StoppableServerThread(threading.Thread):
@@ -110,7 +107,7 @@ class StoppableServerThread(threading.Thread):
     regularly for the stopped() condition."""
 
     def __init__(self, port=8000, as_daemon=True):
-        self.server = StoppableServer()
+        self.server = StoppableServer(port)
         self.port = port
 
         super(StoppableServerThread, self).__init__(

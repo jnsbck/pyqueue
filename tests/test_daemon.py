@@ -94,7 +94,7 @@ def test_update_worker_status(server=None, client=None):
 )
 def test_server_client_interaction(test):
     def test_with_server_and_client(test):
-        thread = StoppableServerThread()
+        thread = StoppableServerThread(port=8001)
         server = thread.server
         thread.start()
 
