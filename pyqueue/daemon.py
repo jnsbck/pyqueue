@@ -35,11 +35,11 @@ class Queue:
     def get_running_jobs(self):
         return self.get_jobs("running")
 
-    def dump(self, path):
-        pass
+    # def dump(self, path):
+    #     pass
 
-    def load(self, path):
-        pass
+    # def load(self, path):
+    #     pass
 
     def next_job(self):
         pending_jobs = self.get_pending_jobs()
