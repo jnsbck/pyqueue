@@ -4,9 +4,9 @@
 import datetime
 import logging
 import os
-from signal import signal
 import time
 import xmlrpc.client
+from signal import signal
 
 from pyqueue.helpers import timedelta2dict
 from pyqueue.jobs import *
