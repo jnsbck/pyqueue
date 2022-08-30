@@ -71,9 +71,23 @@ def test_job_run(Job, expected_out, expected_err):
 
 
 # @pytest.mark.parametrize("Job", testable_jobs)
-# def test_job_kill(Job):
-#     pass
+# def test_check_alive(Job):
+#     job = Job()
+#     assert job.check_alive()
+#
+#     job.run()
+#     assert job.check_alive()
+
+#     job.kill()
+#     assert not job.check_alive()
 
 # @pytest.mark.parametrize("Job", testable_jobs)
-# def test_check_alive(Job):
-#     pass
+# def test_job_kill(Job):
+#     job = Job()
+#     job.kill()
+#     assert not job.check_alive(), "Job was not reliably killed."
+
+#     job = Job()
+#     job.run()
+#     job.kill()
+#     assert not job.check_alive(), "Job was not reliably killed."

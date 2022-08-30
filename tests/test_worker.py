@@ -13,3 +13,8 @@
 # test worker daemon interactions (receive kill signal, receive jobs)
 # test worker handling interuptions in the job or of the worker
 # test worker handling interuptions of daemon
+
+# def test_worker_server_interaction():
+#     test kill worker
+#     test status checks worker
+#     test registering and unregistering worker
