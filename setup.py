@@ -8,7 +8,7 @@ with open("README.md") as fh:
 
 setup(
     name="pyqueue",
-    version="0.1.1",
+    version="0.01",
     author="Jonas Beck",
     author_email="jonas.beck@uni-tuebingen.de",
     description="A simple and lightweight task queue and job scheduler",
@@ -16,8 +16,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/jnsbck/pyqueue",
     # license="GPLv3", # TO BE DETERMINED
-    packages=find_packages("pyqueue"),
-    package_dir = {"": "pyqueue"},
+    packages=find_packages(where="pyqueue"),
     zip_safe=False,
     install_requires=["psutil", "black", "isort"],
     classifiers=[
@@ -26,7 +25,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'pyqueue=main.__main__:main',
+            'pyqueue=main:main',
         ],
     }
 )
