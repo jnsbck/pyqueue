@@ -15,7 +15,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/jnsbck/pyqueue",
-    # license="GPLv3", # TO BE DETERMINED
+    license="GPLv3",
     packages=find_packages(where="pyqueue"),
     zip_safe=False,
     install_requires=["psutil", "black", "isort"],
