@@ -14,9 +14,9 @@ Supports sbatch, squeue, sinfo and (not yet) scancel.
 ## Install
 1. Clone the repo
 2. `cd pyqueue`
-3. `python3 setup.py .`
+3. `python -m pip install .`
 
-To test if the installation was successful, type `pyqueue`
+To test if the installation was successful, type `pyqueue --version`
 
 ## Getting started
 To use pyqueue, start the queue daemon with `pyqueue start daemon`. You can check if the deamon is running with `pyqueue sinfo`.
@@ -25,8 +25,8 @@ Now the daemon is ready to accept jobs, which you can submit with `sbatch`, i.e.
 
 ## Structure
 To keep pyqueue somewhat modular, it is split into:
-- `daemon.py`, queue server
-- `client.py`, client
+- `daemon.py`, a queue server
+- `client.py`, a client 
 - `worker.py`, worker processes
 - `jobs.py`, job specifications
 
