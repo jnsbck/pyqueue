@@ -7,6 +7,7 @@ import os
 import time
 import xmlrpc.client
 from signal import signal
+from abc import ABC, abstractmethod
 
 from pyqueue.helpers import timedelta2dict
 from pyqueue.jobs import *
@@ -14,8 +15,7 @@ from pyqueue.utils import get_logger, try_unpickle
 
 log = get_logger("WORKER")
 
-
-class Worker:
+class BaseWorker(ABC):
     def __init__(self, queue_server=None):
         self.current_job = None
         self.pid = os.getpid()
@@ -26,7 +26,7 @@ class Worker:
 
     def register_with_queue_server(self, server):
         self.queue_server = server
-        self.queue_server.register_worker(
+        self.queue_server.register_worker(# TODO: sent self and extract attrs server side ? 
             self.pid,
             {"t_up": self._tup, "status": self.status, "current_job": self.current_job},
         )
@@ -44,11 +44,23 @@ class Worker:
 
     def update_worker_status(self, job_id, status="idle"):
         self.current_job = job_id
-        self.queue_server.update_worker_status(
+        self.queue_server.update_worker_status( # TODO: sent self and extract attrs server side ?
             self.pid, {"status": status, "current_job": self.current_job}
         )
         if status == "idle":
             self._tidle = datetime.datetime.now()
+
+    @abstractmethod
+    def start(self):
+        pass
+
+    @abstractmethod
+    def kill(self):
+        pass
+
+class Worker(BaseWorker):
+    def __init__(self, queue_server=None):
+        super().__init__(queue_server=queue_server)
 
     def start(self):
         log.info("Starting worker")

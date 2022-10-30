@@ -18,4 +18,4 @@ from pyqueue.utils import (
     try_unpickle,
     wait_until,
 )
-from pyqueue.worker import Worker
+from pyqueue.worker import BaseWorker, Worker
