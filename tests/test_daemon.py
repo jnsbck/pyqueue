@@ -112,3 +112,6 @@ def test_server_client_interaction(test):
     time.sleep(
         0.5
     )  # for some reason without this OSError: [Errno 98] (Address already in use) is raised
+
+
+# test if all inputs/outputs are pickled
